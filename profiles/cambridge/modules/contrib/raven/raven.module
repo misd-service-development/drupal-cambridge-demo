@@ -1,0 +1,576 @@
+<?php
+
+require_once dirname(__FILE__) . '/raven.service.inc';
+
+/**
+ * Implements hook_help().
+ */
+function raven_help($path, $arg) {
+  global $user;
+
+  $output = '';
+
+  switch ($path) {
+    case 'admin/config/people/raven':
+      $output .= '<p>' . t('Raven users are able to log in to the site. If an account does not already exist, one is created.') . '</p>';
+      break;
+    case 'admin/help#raven':
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('The Raven authentication module allows users to log in using <a href="@raven_url">Raven</a>, the University of Cambridge\'s central web authentication service. It can replace, or co-exist with, the standard Drupal authentication method.', array('@raven_url' => 'http://raven.cam.ac.uk/')) . '</p>';
+
+      $output .= '<h3>' . t('Uses') . '</h3>';
+      $output .= '<dl>';
+
+      $output .= '<dt>' . t('Creating Raven users') . '</dt>';
+      $output .= '<dd>' . t('Users who log in with Raven create a new account automatically if one does not already exist, assuming your site allows visitors to create accounts.') . '</dd>';
+
+      $output .= '<dt>' . t('Editing Raven users') . '</dt>';
+      $output .= '<dd>' . t('On the <a href="@user_edit_path">user edit page</a> the username field is replaced with a disabled CRSid field for users who have logged in with Raven. The password area is also hidden.', array('@user_edit_path' => url('user/' . $user->uid . '/edit'))) . '</dd>';
+
+      $user1 = user_load(1);
+      $output .= '<dt>' . t('Disable non-Raven users') . '</dt>';
+      $output .= '<dd>' . t('The standard user login paths can be overridden in the <a href="@raven_config_path">Raven administration page</a>, so all users must log in using Raven.', array('@raven_config_path' => url('admin/config/people/raven'))) . '</dd>';
+      $output .= '<dd>' . t('Site-created users such as \'@user1\' will not be able to log in, unless the backdoor login path is enabled. <i>Disabling this without having an administrator able to log in via Raven will lock you out of your site.</i>', array(
+        '@user1' => $user1 ? $user1->name : 'admin',
+        // user 1 should always exist, but just in case
+      )) . '</dd>';
+
+      $output .= '</dl>';
+      break;
+  }
+
+  return $output;
+}
+
+/**
+ * Implements hook_menu();
+ */
+function raven_menu() {
+  $items = array();
+
+  $items['raven/login'] = array(
+    'title' => 'Raven log in',
+    'access callback' => 'user_is_anonymous',
+    'page callback' => 'raven_login',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/config/people/raven'] = array(
+    'title' => 'Raven authentication',
+    'description' => 'Settings to configure logging in with Raven',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('raven_settings_form'),
+    'access arguments' => array('administer raven authentication'),
+    'file' => 'raven.admin.inc',
+  );
+
+  $items['user/backdoor/login'] = array(
+    'title' => 'Non-Raven backdoor login',
+    'access callback' => 'raven_backdoor_login_is_enabled',
+    'page callback' => 'raven_backdoor_login',
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function raven_permission() {
+  $permissions['administer raven authentication'] = array(
+    'title' => t('Administer Raven authentication configuration.'),
+    'restrict access' => TRUE,
+  );
+  return $permissions;
+}
+
+/**
+ * Implements hook_menu_site_status_alter().
+ *
+ * Makes the Raven login pages available if the site is in maintenance mode.
+ */
+function raven_menu_site_status_alter(&$menu_site_status, $path) {
+  if (
+    $menu_site_status === MENU_SITE_OFFLINE &&
+    user_is_anonymous() &&
+    ($path === 'raven/login' || ($path === 'user/backdoor/login' && raven_backdoor_login_is_enabled()))
+  ) {
+    $menu_site_status = MENU_SITE_ONLINE;
+  }
+}
+
+/**
+ * Is non-Raven backdoor login enabled?
+ *
+ * @return bool
+ *   TRUE if enable, FALSE otherwise
+ */
+function raven_backdoor_login_is_enabled() {
+  return (variable_get('raven_login_override') == TRUE) * (variable_get('raven_backdoor_login') == TRUE);
+}
+
+/**
+ * Provides a backdoor for logging in without Raven.
+ *
+ * This means that site-created accounts (eg the original administrator account) can still access the site.
+ *
+ * If the user is already logged in, they are redirected to their profile page.
+ */
+function raven_backdoor_login() {
+  global $user;
+
+  if ($user->uid) {
+    // User is already logged in
+    drupal_goto('user/' . $user->uid);
+  }
+
+  return drupal_get_form('user_login');
+}
+
+/**
+ * Send the user to the Raven login page.
+ *
+ * @param string|null $redirect
+ *   Path to redirect to. If null, the HTTP_REFERER header is used. If that's not set, the front page is used.
+ */
+function raven_login($redirect = NULL) {
+  global $base_url;
+
+  if ($redirect === NULL) {
+    $redirect = ($_SERVER['HTTP_REFERER'] != NULL ? $_SERVER['HTTP_REFERER'] : $base_url);
+  }
+
+  $website_description = variable_get('raven_website_description');
+
+  $params['ver'] = '3';
+  $params['url'] = urlencode($base_url . '/');
+  $params['desc'] = urlencode(!empty($website_description) ? $website_description : variable_get('site_name', $base_url));
+  $params['params'] = urlencode(url($redirect, array('absolute' => TRUE)));
+
+  $parameters = array();
+  foreach ($params as $key => $val) {
+    $parameters[] = $key . '=' . utf8_encode($val);
+  }
+  $parameters = implode('&', $parameters);
+
+  drupal_goto(get_raven_url() . '?' . $parameters, array(), 303);
+}
+
+/**
+ * Main authentication function.
+ *
+ * Get the returned details from Raven and decide whether to log in the user.
+ *
+ * Failed attempts send the user to the login failure redirect path and logs the problem.
+ */
+function raven_auth() {
+  global $base_url;
+
+  if (FALSE === isset($_REQUEST['WLS-Response'])) {
+    drupal_goto(variable_get('raven_login_fail_redirect'));
+  }
+
+  // Parse Raven Reply
+  $parts = explode('!', $_REQUEST['WLS-Response']);
+
+  $r_ver = array_shift($parts);
+  $versions = array('1' => 12, '2' => 12, '3' => 13);
+
+  if (FALSE === in_array($r_ver, array('1', '2', '3'), TRUE) || count($parts) <> $versions[$r_ver]) {
+    drupal_set_message(t('Suspicious login attempt denied and logged.'), 'error');
+    watchdog('raven', 'Suspicious login attempt. Raven response is not acceptable (@wls_response).', array('@wls_response' => $_REQUEST['WLS-Response']), WATCHDOG_ALERT);
+    drupal_goto(variable_get('raven_login_fail_redirect'));
+  }
+
+  $r_sig = array_pop($parts);
+  $r_kid = array_pop($parts);
+
+  if ($r_ver >= 3) {
+    list($r_status, $r_msg, $r_issue, $r_id, $r_url, $r_principal, $r_ptags, $r_auth, $r_sso, $r_life, $r_params) = $parts;
+  }
+  else {
+    list($r_status, $r_msg, $r_issue, $r_id, $r_url, $r_principal, $r_auth, $r_sso, $r_life, $r_params) = $parts;
+  }
+
+  array_unshift($parts, $r_ver);
+
+  if (($r_status === '200') && (raven_signature_check(implode('!', $parts), $r_sig) === TRUE)) {
+    // Timeout check
+    if ((time() - strtotime($r_issue)) > 30) {
+      drupal_set_message(t('Login attempt timed out.'), 'error');
+      watchdog('raven', 'Timeout on login attempt for @raven_id', array('@raven_id' => $r_principal), WATCHDOG_WARNING);
+      drupal_goto(variable_get('raven_login_fail_redirect'));
+    }
+
+    // 'kid' check
+    if ($r_kid !== get_raven_kid()) {
+      drupal_set_message(t('Suspicious login attempt denied and logged.'), 'error');
+      watchdog('raven', 'Suspicious login attempt claiming to be @raven_id. \'kid\' validation failed: expecting \'@expected\', got \'@given\'.', array(
+        '@raven_id' => $r_principal,
+        '@expected' => get_raven_kid(),
+        '@given' => $r_kid,
+      ), WATCHDOG_ALERT);
+      drupal_goto(variable_get('raven_login_fail_redirect'));
+    }
+
+    // Valid path check
+    if ($r_url !== $base_url . '/') {
+      drupal_set_message(t('Suspicious login attempt denied and logged.'), 'error');
+      watchdog('raven', 'Suspicious login attempt claiming to be @raven_id. \'url\' validation failed: expecting \'@expected\', got \'@given\'.', array(
+        '@raven_id' => $r_principal,
+        '@expected' => $base_url . '/',
+        '@given' => $r_url,
+      ), WATCHDOG_ALERT);
+      drupal_goto(variable_get('raven_login_fail_redirect'));
+    }
+
+    // 'auth' check
+    if ($r_auth !== 'pwd' && $r_auth !== '') {
+      drupal_set_message(t('Suspicious login attempt denied and logged.'), 'error');
+      watchdog('raven', 'Suspicious login attempt claiming to be @raven_id. \'auth\' validation failed: expecting \'@expected\', got \'@given\'.', array(
+        '@raven_id' => $r_principal,
+        '@expected' => 'pwd',
+        '@given' => $r_auth,
+      ), WATCHDOG_ALERT);
+      drupal_goto(variable_get('raven_login_fail_redirect'));
+    }
+
+    // 'sso' check
+    if ($r_sso !== 'pwd' && $r_auth === '') {
+      drupal_set_message(t('Suspicious login attempt denied and logged.'), 'error');
+      watchdog('raven', 'Suspicious login attempt claiming to be @raven_id. \'sso\' validation failed: expecting \'@expected\', got \'@given\'.', array(
+        '@raven_id' => $r_principal,
+        '@expected' => 'pwd',
+        '@given' => $r_sso,
+      ), WATCHDOG_ALERT);
+      drupal_goto(variable_get('raven_login_fail_redirect'));
+    }
+
+    // Raven for Life check
+    if (isset($r_ptags) && $r_ptags !== 'current' && variable_get('raven_allow_raven_for_life') != TRUE) {
+      drupal_set_message(t('Raven for Life accounts are not allowed to access the site.'), 'error');
+      watchdog('raven', 'Raven for Life account @raven_id denied access.', array('@raven_id' => $r_principal), WATCHDOG_INFO);
+      drupal_goto(variable_get('raven_login_fail_redirect'));
+    }
+
+    // Successful login
+    user_raven_login_register($r_principal);
+    drupal_goto(urldecode($r_params));
+  }
+  elseif ($r_status === '410') {
+    watchdog('raven', 'Raven authentication cancelled.', array(), WATCHDOG_INFO);
+    drupal_set_message(t('Raven authentication cancelled.'));
+    drupal_goto(variable_get('raven_login_fail_redirect'));
+  }
+  else {
+    watchdog('raven', 'Authentication failure: @message.', array('@message' => raven_response_status_name($r_status)), WATCHDOG_ERROR);
+    drupal_set_message(t('Raven authentication failure.'), 'error');
+    drupal_goto(variable_get('raven_login_fail_redirect'));
+  }
+}
+
+/**
+ * Get Raven response status name.
+ *
+ * @param int $code
+ *   Response status code.
+ *
+ * @return string
+ *   Response status name.
+ */
+function raven_response_status_name($code) {
+  switch ($code) {
+    case 200:
+      return 'Successful authentication';
+    case 410:
+      return 'The user cancelled the authentication request';
+    case 510:
+      return 'No mutually acceptable authentication types available';
+    case 520:
+      return 'Unsupported protocol version';
+    case 530:
+      return 'General request parameter error';
+    case 540:
+      return 'Interaction would be required';
+    case 560:
+      return 'WAA not authorised';
+    case 570:
+      return 'Authentication declined';
+    default:
+      return 'Unknown status code';
+  }
+}
+
+/**
+ * Implements hook_init().
+ */
+function raven_init() {
+  global $user;
+
+  // prevent normal login pages if needed
+  if (variable_get('raven_login_override', FALSE)) {
+    switch (strtolower(current_path())) {
+      case 'user':
+        if (!$user->uid) {
+          raven_login('user');
+        }
+        break;
+      case 'user/login':
+      case 'user/register':
+        if (!$user->uid) {
+          raven_login();
+        }
+        break;
+      case 'user/password':
+        if ($user->uid) {
+          drupal_goto('user');
+        }
+        else {
+          drupal_access_denied();
+        }
+        break;
+    }
+  }
+
+  if (isset($_REQUEST['WLS-Response'])) {
+    raven_auth();
+  }
+}
+
+/**
+ * Check Raven signature.
+ *
+ * @param string $data
+ *   Data to check.
+ * @param string $sig
+ *   Signature to check against.
+ *
+ * @return bool
+ *   TRUE if successful, FALSE otherwise.
+ */
+function raven_signature_check($data, $sig) {
+  $key = openssl_pkey_get_public(get_raven_pubkey());
+  $result = openssl_verify(rawurldecode($data), raven_signature_decode(rawurldecode($sig)), $key);
+  openssl_free_key($key);
+  switch ($result) {
+    case 1:
+      return TRUE;
+      break;
+    case 0:
+      return FALSE;
+      break;
+    default:
+      watchdog('raven', 'OpenSSL error.', array(), WATCHDOG_ERROR);
+      drupal_set_message(t('Error authenticating.'), 'error');
+      return FALSE;
+      break;
+  }
+}
+
+/**
+ * Decode Raven signature.
+ *
+ * @param string $str
+ *   Signature to decode.
+ *
+ * @return string|bool
+ *   Decoded signature string on success, FALSE otherwise.
+ */
+function raven_signature_decode($str) {
+  $result = preg_replace(array(
+    '/-/',
+    '/\./',
+    '/_/',
+  ), array(
+    '+',
+    '/',
+    '=',
+  ), $str);
+  $result = base64_decode($result);
+  return $result;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for user_profile_form().
+ *
+ * Changes the user profile from for Raven users (eg the username field is labelled as CRSid).
+ */
+function raven_form_user_profile_form_alter(&$form, &$form_state, $form_id) {
+  // If this is a Raven user
+  if (is_raven_user($form['#user'])) {
+    // Change the username so that it's an unalterable CRSid
+    $form['account']['name']['#title'] = 'CRSid';
+    $form['account']['name']['#description'] = 'University of Cambridge CRSid.';
+    $form['account']['name']['#attributes']['disabled'] = 'disabled';
+
+    // Hide the password fields
+    if (isset($form['account']['pass'])) {
+      $form['account']['pass']['#access'] = FALSE;
+    }
+    if (isset($form['account']['current_pass'])) {
+      $form['account']['current_pass']['#access'] = FALSE;
+    }
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ *
+ * Adds a 'log in with Raven' link to relevant pages.
+ */
+function raven_form_alter(&$form, $form_state, $form_id) {
+  switch ($form_id) {
+    case 'user_login':
+    case 'user_register_form':
+      if (current_path() !== 'user/backdoor/login' && strncmp(current_path(), 'admin', 5)) {
+        $form['raven_message'] = array(
+          '#markup' => '<div class="messages">' . t('Have a Raven account? You can <a href="@raven_login_path">log in with Raven</a> instead.', array('@raven_login_path' => url('raven/login'))) . '</div>',
+          '#weight' => -100,
+        );
+      }
+      break;
+    case 'user_login_block':
+      $form['raven_message'] = array(
+        '#markup' => '<p>' . t('Have a Raven account? You can <a href="@raven_login_path">log in with Raven</a> instead.', array('@raven_login_path' => url('raven/login'))) . '</p>',
+        '#weight' => -100,
+      );
+      break;
+  }
+}
+
+/**
+ * Implements hook_block_view_alter().
+ */
+function raven_block_view_alter(&$data, $block) {
+  global $user;
+
+  if ($user->uid) {
+    return;
+  }
+
+  if ($block->delta === 'login' && variable_get('raven_login_override') == TRUE) {
+    $data['content'] = '<ul><li>' . t('<a href="@raven_login_path">Log in with Raven</a>', array('@raven_login_path' => url('raven/login'))) . '</li></ul>';
+  }
+}
+
+/**
+ * Is this a Raven user?
+ *
+ * @param StdClass $account
+ *   User account.
+ *
+ * @return bool
+ *   TRUE if is a Raven user, FALSE if not.
+ */
+function is_raven_user(StdClass $account) {
+  if (isset($account->is_raven_user) === FALSE) {
+    $authmaps = user_get_authmaps($account->name);
+    $account->is_raven_user = isset($authmaps['raven']);
+  }
+  return $account->is_raven_user;
+}
+
+/**
+ * Logs in or register the user following Raven authentication.
+ *
+ * The global $user object is populated and login tasks are performed.
+ *
+ * @param string $name
+ *   Username, which is the CRSid.
+ *
+ * @see hook_raven_register_alter()
+ * @see hook_raven_migrate_alter()
+ * @see hook_raven_login_alter()
+ */
+function user_raven_login_register($name) {
+  $edit = array();
+  $account = user_external_load($name);
+
+  if (variable_get('raven_logout_on_browser_close') == TRUE) {
+    ini_set('session.cookie_lifetime', 0);
+  }
+
+  if ($account === FALSE) {
+    // User hasn't logged in with Raven before
+    $account = user_load_by_name($name);
+    if ($account === FALSE) {
+      // User does not exist yet
+      // Check if overriding admin approval is set
+      if (variable_get('raven_override_administrator_approval')) {
+        $status = 1;
+      }
+      else {
+        switch (variable_get('user_register')) {
+          case USER_REGISTER_ADMINISTRATORS_ONLY:
+            drupal_set_message(t('Only site administrators can create accounts.'), 'error');
+            drupal_goto(variable_get('raven_login_fail_redirect'));
+            break;
+          case USER_REGISTER_VISITORS_ADMINISTRATIVE_APPROVAL:
+            drupal_set_message(t('Thank you for applying for an account. Your account is currently pending approval by the site administrator.'));
+            $status = 0;
+            break;
+          default:
+            $status = 1;
+            break;
+        }
+      }
+      $account = drupal_anonymous_user();
+      $account->is_raven_user = TRUE;
+      $edit = array(
+        'name' => $name,
+        'pass' => user_password(),
+        'init' => $name . '@cam.ac.uk',
+        'mail' => $name . '@cam.ac.uk',
+        'status' => $status,
+        'access' => REQUEST_TIME,
+      );
+      drupal_alter('raven_register', $edit, $account);
+      watchdog('raven', 'New user: @name (@email).', array(
+        '@name' => $edit['name'],
+        '@email' => $edit['init'],
+        WATCHDOG_NOTICE,
+        l(t('edit'), 'user/' . $account->uid . '/edit')
+      ));
+    }
+    else {
+      $account->is_raven_user = TRUE;
+      drupal_alter('raven_migrate', $edit, $account);
+      watchdog('raven', 'Migrated user: @name (@email).', array(
+        '@name' => $account->name,
+        '@email' => isset($edit['mail']) ? $edit['mail'] : $account->mail,
+        WATCHDOG_NOTICE,
+        l(t('edit'), 'user/' . $account->uid . '/edit')
+      ));
+    }
+  }
+  else {
+    $account->is_raven_user = TRUE;
+    drupal_alter('raven_login', $edit, $account);
+  }
+
+  // Check if user is blocked
+  if (isset($account->name) && user_is_blocked($account->name)) {
+    drupal_set_message(t('The username @name is blocked.', array('@name' => $account->name)), 'error');
+  }
+  else {
+    // Save the account
+    $account = user_save($account, $edit);
+    if ($account != FALSE) {
+      user_set_authmaps($account, array('authname_raven' => $name));
+
+      // Log user in
+      $form_state['uid'] = $account->uid;
+      user_login_submit(array(), $form_state);
+    }
+    else {
+      drupal_set_message(t('Error saving user account.'), 'error');
+    }
+  }
+
+  global $user;
+
+  if (!$user->uid) {
+    drupal_goto(variable_get('raven_login_fail_redirect'));
+  }
+}

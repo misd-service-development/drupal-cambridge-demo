@@ -1,0 +1,12 @@
+imports:
+  - ../behat.yml.dist
+
+default:
+    paths:
+        features: %behat.paths.base%/../features
+    context:
+        parameters:
+            drupal_path: '%behat.paths.base%/../../../drupal'
+    extensions:
+        Behat\MinkExtension\Extension:
+            base_url: 'http://localhost/'

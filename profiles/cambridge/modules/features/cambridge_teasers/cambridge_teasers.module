@@ -1,0 +1,73 @@
+<?php
+/**
+ * @file
+ * Code for the Teasers feature.
+ */
+
+/**
+ * Implements hook_entity_info_alter().
+ */
+function cambridge_teasers_entity_info_alter(&$entity_info) {
+  if (isset($entity_info['node']['view modes']['teaser'])) {
+    $entity_info['node']['view modes']['teaser']['label'] = 'Horizontal Teaser';
+  }
+
+  $entity_info['node']['view modes'] += array(
+    'vertical_teaser' => array(
+      'label' => t('Vertical Teaser'),
+      'custom settings' => TRUE,
+    ),
+    'sidebar_teaser' => array(
+      'label' => t('Sidebar Teaser'),
+      'custom settings' => TRUE,
+    ),
+    'focus_on_teaser' => array(
+      'label' => t('Focus On Teaser'),
+      'custom settings' => TRUE,
+    ),
+    'news_listing_item' => array(
+      'label' => t('News Listing Item'),
+      'custom settings' => TRUE,
+    ),
+  );
+
+}
+
+/**
+ * Implements hook_theme_registry_alter().
+ */
+function cambridge_teasers_theme_registry_alter(&$theme_registry) {
+  $module_path = drupal_get_path('module', 'cambridge_teasers') . '/templates';
+
+  _theme_process_registry($theme_registry, 'phptemplate', 'theme_engine', 'cambridge_teasers', $module_path);
+}
+
+/**
+ * Implements template_preprocess_node().
+ */
+function cambridge_teasers_preprocess_node(&$vars) {
+  $view_modes = array('teaser', 'vertical_teaser', 'sidebar_teaser', 'focus_on_teaser', 'news_listing_item');
+
+  if (in_array($vars['view_mode'], $view_modes)) {
+    $vars['theme_hook_suggestions'][] = 'node____' . $vars['view_mode'];
+    $vars['theme_hook_suggestions'][] = 'node__' . $vars['type'] . '__' . $vars['view_mode'];
+    $vars['theme_hook_suggestions'][] = 'node__' . $vars['nid'] . '__' . $vars['view_mode'];
+    $vars['date'] = format_date($vars['node']->created, 'custom', 'j F Y');
+  }
+}
+
+/**
+ * Implements template_preprocess_field().
+ */
+function cambridge_teasers_preprocess_field(&$vars) {
+  $view_modes = array('teaser', 'vertical_teaser', 'sidebar_teaser', 'news_listing_item');
+
+  if (in_array($vars['element']['#view_mode'], $view_modes) && 'smart_trim_format' === $vars['element']['#formatter']) {
+    foreach ($vars['items'] as $key => $value) {
+      if (FALSE === strpos($vars['items'][$key]['#markup'], '<')) {
+        // Wrap smart-trimmed text that has stripped HTML in a paragraph element.
+        $vars['items'][$key]['#markup'] = '<p>' . $vars['items'][$key]['#markup'] . '</p>';
+      }
+    }
+  }
+}

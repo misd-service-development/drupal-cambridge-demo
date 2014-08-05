@@ -1,0 +1,40 @@
+<?php
+/**
+ * @file
+ * Code for the Carousel feature.
+ */
+
+include_once 'cambridge_carousel.features.inc';
+
+/**
+ * Implements hook_entity_info_alter().
+ */
+function cambridge_carousel_entity_info_alter(&$entity_info) {
+  $entity_info['node']['view modes'] += array(
+    'carousel_item' => array(
+      'label' => t('Carousel Item'),
+      'custom settings' => TRUE,
+    ),
+  );
+}
+
+/**
+ * Implements hook_theme_registry_alter().
+ */
+function cambridge_carousel_theme_registry_alter(&$theme_registry) {
+  $theme_registry['node____carousel_item'] = array(
+    'template' => drupal_get_path('module', 'cambridge_carousel') . '/templates/node----carousel-item',
+    'type' => 'module',
+  );
+}
+
+/**
+ * Implements template_preprocess_node().
+ */
+function cambridge_carousel_preprocess_node(&$vars) {
+  switch ($vars['view_mode']) {
+    case 'carousel_item':
+      $vars['theme_hook_suggestions'][] = 'node____carousel_item';
+      break;
+  }
+}

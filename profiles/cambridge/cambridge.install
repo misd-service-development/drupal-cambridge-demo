@@ -1,0 +1,390 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the University of Cambridge installation profile.
+ */
+
+/**
+ * Implements hook_install().
+ *
+ * Perform actions to set up the site for this profile.
+ *
+ * @see system_install()
+ */
+function cambridge_install() {
+  require_once 'cambridge_base.inc';
+
+  cambridge_base_install();
+
+  // Force a main-menu link on Basic Pages.
+  variable_set('menu_force_page', TRUE);
+
+  // News articles shouldn't be promoted to front page.
+  variable_set('node_options_news_article', array('status'));
+
+  // Display date and author information on news articles.
+  variable_set('node_submitted_news_article', TRUE);
+
+  // News articles shouldn't be on a menu.
+  variable_set('menu_options_news_article', array());
+
+  $instances = array(
+    array(
+      'entity_type' => 'node',
+      'bundle' => 'page',
+      'field_name' => 'field_related_links',
+      'label' => st('Related links'),
+      'cardinality' => -1,
+      'type' => 'field_related_links',
+      'settings' => array(
+        'title' => 'required',
+      ),
+      'display' => array(
+        'default' => array(
+          'label' => 'above',
+          'type' => 'hidden',
+        ),
+        'teaser' => array(
+          'label' => 'hidden',
+          'type' => 'hidden',
+        ),
+      ),
+    ),
+  );
+
+  foreach ($instances as $instance) {
+    field_create_instance($instance);
+  }
+
+  // Use the Smart Trim module for teasers.
+
+  $smart_trimmed = array(
+    'label' => 'hidden',
+    'module' => 'smart_trim',
+    'settings' => array(
+      'more_link' => 0,
+      'more_text' => 'Read more',
+      'summary_handler' => 'full',
+      'trim_length' => 325,
+      'trim_options' => array(
+        'text' => 'text',
+      ),
+      'trim_suffix' => '...',
+      'trim_type' => 'chars',
+    ),
+    'type' => 'smart_trim_format',
+    'weight' => 0,
+  );
+
+  foreach (array('page', 'link') as $type) {
+    $instance = field_info_instance('node', 'body', $type);
+
+    foreach (array('teaser', 'news_listing_item', 'vertical_teaser', 'sidebar_teaser') as $mode) {
+      $instance['display'][$mode] = $smart_trimmed;
+    }
+
+    field_update_instance($instance);
+  }
+
+  // Force a main-menu link on Basic Pages.
+  variable_set('menu_force_page', TRUE);
+
+  // Questions and Answers shouldn't be promoted to front page.
+  variable_set('node_options_questions_and_answers', array('status'));
+
+  // Questions and Answers shouldn't show date and author information.
+  variable_set('node_submitted_questions_and_answers', FALSE);
+
+  // Force a main-menu link on Questions and Answers.
+  variable_set('menu_force_questions_and_answers', TRUE);
+
+  // Set sensible URL alias pattern defaults.
+
+  variable_set('pathauto_node_pattern', '[node:title]');
+  variable_set('pathauto_node_page_pattern', '[node:menu-link:parent:url:path]/[node:title]');
+  variable_set('pathauto_node_link_pattern', 'link/[node:title]');
+  variable_set('pathauto_node_news_article_pattern', 'news/[node:title]');
+  variable_set('pathauto_node_questions_and_answers_pattern', '[node:menu-link:parent:url:path]/[node:title]');
+
+  // Don't let Menu Trail By Path handle breadcrumbs.
+  variable_set('menu_trail_by_path_breadcrumb_handling', FALSE);
+
+  // Use the media module for image field instances.
+
+  $instances = array(
+    field_read_instance('node', 'field_image', 'page'),
+    field_read_instance('node', 'field_image', 'link'),
+  );
+
+  foreach ($instances as $instance) {
+    $instance['widget']['type'] = 'media_generic';
+    $instance['widget']['module'] = 'media';
+
+    field_update_instance($instance);
+  }
+
+  // Create a real name field for users.
+
+  $field = array(
+    'field_name' => 'field_user_name',
+    'label' => st('Name'),
+    'cardinality' => 1,
+    'type' => 'text',
+    'settings' => array(
+      'max_length' => 255,
+    ),
+  );
+
+  field_create_field($field);
+
+  $instance = array(
+    'entity_type' => 'user',
+    'bundle' => 'user',
+    'field_name' => 'field_user_name',
+    'label' => st('Name'),
+    'description' => st('The user\'s real name.'),
+    'required' => 1,
+    'cardinality' => 1,
+    'type' => 'field_user_name',
+    'settings' => array(
+      'size' => 60,
+      'text_processing' => 0,
+      'user_register_form' => 1,
+    ),
+    'widget' => array(
+      'weight' => -11,
+    ),
+    'display' => array(
+      'default' => array(
+        'label' => 'inline',
+        'type' => 'text_plain',
+        'weight' => 1,
+      ),
+      'teaser' => array(
+        'label' => 'inline',
+        'type' => 'text_plain',
+        'weight' => 1,
+      ),
+    ),
+  );
+
+  field_create_instance($instance);
+
+  variable_set('realname_pattern', '[user:field_user_name]');
+
+  // Give the admin user a real name.
+
+  db_insert('field_data_field_user_name')
+    ->fields(
+      array(
+        'entity_type' => 'user',
+        'bundle' => 'user',
+        'deleted' => 0,
+        'entity_id' => 1,
+        'revision_id' => 1,
+        'language' => 'und',
+        'delta' => 0,
+        'field_user_name_value' => 'Administrator',
+        'field_user_name_format' => NULL,
+      )
+    )
+    ->execute();
+
+  db_insert('field_revision_field_user_name')
+    ->fields(
+      array(
+        'entity_type' => 'user',
+        'bundle' => 'user',
+        'deleted' => 0,
+        'entity_id' => 1,
+        'revision_id' => 1,
+        'language' => 'und',
+        'delta' => 0,
+        'field_user_name_value' => 'Administrator',
+        'field_user_name_format' => NULL,
+      )
+    )
+    ->execute();
+
+  // Transliterate Pathauto aliases.
+
+  variable_set('pathauto_transliterate', 1);
+
+  // Set CKEditor settings.
+
+  $settings = db_select('ckeditor_settings', 's')
+    ->fields('s', array('settings'))
+    ->condition('name', 'CKEditor Global Profile')
+    ->execute()
+    ->fetchField();
+
+  $settings = unserialize($settings);
+
+  // Set path to CKEditor library.
+  $settings['ckeditor_path'] = '%b/profiles/cambridge/libraries/ckeditor';
+
+  db_update('ckeditor_settings')
+    ->fields(array('settings' => serialize($settings)))
+    ->condition('name', 'CKEditor Global Profile')
+    ->execute();
+
+  $profiles = db_select('ckeditor_settings', 's')
+    ->fields('s')
+    ->condition('name', array('Advanced', 'Full'), 'IN')
+    ->execute()
+    ->fetchAllAssoc('name');
+
+  foreach ($profiles as $name => $profile) {
+    $settings = unserialize($profile->settings);
+
+    // Set language to English (United Kingdom).
+    $settings['lang'] = 'en-uk';
+
+    // Turn off Advanced Content Filter.
+    $settings['js_conf'] = 'config.allowedContent = true;';
+
+    db_update('ckeditor_settings')
+      ->fields(array('settings' => serialize($settings)))
+      ->condition('name', $name)
+      ->execute();
+  }
+
+  // Fix usernames in emails
+  cambridge_update_7101();
+}
+
+/**
+ * Set up the Menu Trail By Path module.
+ */
+function cambridge_update_7100() {
+  if (module_exists('menu_trail_by_path') || module_exists('menu_position')) {
+    return;
+  }
+
+  $result = module_enable(array('menu_trail_by_path'));
+
+  if (!$result) {
+    throw new DrupalUpdateException('Failed to enabled Menu Trail By Path module');
+  }
+
+  variable_set('menu_trail_by_path_breadcrumb_handling', FALSE);
+}
+
+/**
+ * Stop names appearing where usernames should in emails.
+ *
+ * See https://drupal.org/node/1827980
+ */
+function cambridge_update_7101() {
+  global $conf;
+
+  if (FALSE === module_exists('realname')) {
+    return;
+  }
+
+  $emails = array('register_admin_created_body', 'register_no_approval_required_body', 'status_activated_body');
+
+  foreach ($emails as $email) {
+    $key = 'user_mail_' . $email;
+
+    $current_variable = variable_get($key);
+    $conf[$key] = FALSE; // temporarily hide a customised message
+    $default_message = _user_mail_text($email, NULL, array(), FALSE); // find the default
+    $conf[$key] = $current_variable; // revert back
+
+    $current_message = _user_mail_text($email, NULL, array(), FALSE); // find the current
+
+    $current_message = preg_replace('~\R~u', "\n", $current_message); // normalise line endings
+
+    if ($current_message === $default_message) {
+      // only change cases where the message is still Drupal's default
+
+      $new_message = str_replace('username: [user:name]', 'username: [user:name-raw]', $default_message);
+
+      variable_set($key, $new_message);
+    }
+  }
+}
+
+/**
+ * Enable Metatag modules.
+ */
+function cambridge_update_7102() {
+  if (module_exists('metatag') || module_exists('metatags_quick') || module_exists('opengraph_meta')) {
+    return;
+  }
+
+  $result = module_enable(array('metatag', 'metatag_dc', 'metatag_views'));
+
+  if (!$result) {
+    throw new DrupalUpdateException('Failed to enabled Metatag modules');
+  }
+}
+
+/**
+ * Use the Smart Trim module for teasers rather than Drupal's native trimming.
+ */
+function cambridge_update_7103() {
+  if (module_exists('smart_trim')) {
+    return;
+  }
+
+  if (FALSE === module_enable(array('smart_trim'))) {
+    throw new DrupalUpdateException('Failed to install Smart Trim module');
+  }
+
+  $smart_trimmed = array(
+    'label' => 'hidden',
+    'module' => 'smart_trim',
+    'settings' => array(
+      'more_link' => 0,
+      'more_text' => 'Read more',
+      'summary_handler' => 'full',
+      'trim_length' => 325,
+      'trim_options' => array(
+        'text' => 'text',
+      ),
+      'trim_suffix' => '...',
+      'trim_type' => 'chars',
+    ),
+    'type' => 'smart_trim_format',
+  );
+
+  foreach (array('page', 'link') as $type) {
+    // Make sure the body appears trimmed in teasers.
+
+    if (FALSE === node_type_get_name($type)) {
+      // Content type no longer exists.
+      continue;
+    }
+
+    $instance = field_info_instance('node', 'body', $type);
+
+    foreach (array('teaser', 'news_listing_item', 'vertical_teaser', 'sidebar_teaser') as $mode) {
+      if (
+        $instance['display'][$mode]['label'] !== 'hidden'
+        ||
+        $instance['display'][$mode]['type'] !== 'text_summary_or_trimmed'
+        ||
+        $instance['display'][$mode]['settings']['trim_length'] !== 600
+      ) {
+        // Display has been changed, so don't touch it.
+        continue;
+      }
+
+      $instance['display'][$mode] = array_merge($instance['display'][$mode], $smart_trimmed);
+    }
+
+    field_update_instance($instance);
+  }
+}
+
+/**
+ * Set up Focus On teasers.
+ */
+function cambridge_update_7104() {
+  require_once 'cambridge_base.inc';
+
+  cambridge_base_set_up_focus_on_teasers();
+}

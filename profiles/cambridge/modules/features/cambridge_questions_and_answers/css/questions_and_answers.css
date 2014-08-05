@@ -1,0 +1,24 @@
+.js .campl-questions-question:hover {
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.js .campl-questions-answer {
+    display: none;
+}
+
+.js .campl-questions-answer-revealed {
+    display: block;
+}
+
+h2.campl-questions-question {
+    font-size: 17px;
+    line-height: 23px;
+}
+
+@media (max-width: 767px) {
+    h2.campl-questions-question {
+        font-size: 22px;
+        line-height: 28px;
+    }
+}

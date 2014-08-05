@@ -1,0 +1,16 @@
+name = Image styles
+description = Adds images styles for the University of Cambridge theme.
+core = 7.x
+package = University of Cambridge
+version = 7.x-1.0
+project = cambridge_image_styles
+dependencies[] = features
+dependencies[] = image
+dependencies[] = imagecrop
+features[features_api][] = api:2
+features[field_base][] = field_image
+features[image][] = carousel
+features[image][] = inline
+features[image][] = leading
+features[image][] = sidebar_teaser
+features[image][] = small

@@ -1,0 +1,36 @@
+name = University of Cambridge
+description = The University of Cambridge's house style.
+core = 7.x
+engine = phptemplate
+version = 1.1
+
+stylesheets[all][] = "css/full-stylesheet.css"
+stylesheets[all][] = "css/drupal.css"
+
+scripts[] = 'js/custom.js'
+scripts[] = 'js/libs/ios-orientationchange-fix.js'
+scripts[] = 'js/libs/modernizr.js'
+scripts[] = 'js/drupal.js'
+
+regions[breadcrumb] = 'Breadcrumb'
+regions[horizontal_navigation] = 'Horizontal Navigation'
+regions[carousel] = 'Carousel'
+regions[left_navigation] = 'Left Navigation'
+regions[content] = 'Content'
+regions[sub_content] = 'Sub-content'
+regions[sidebar] = 'Sidebar'
+regions[partnerships] = 'Partnership branding'
+regions[footer_1] = 'Footer 1'
+regions[footer_2] = 'Footer 2'
+regions[footer_3] = 'Footer 3'
+regions[footer_4] = 'Footer 4'
+
+features[] = logo
+features[] = name
+features[] = favicon
+
+settings[toggle_logo] = 0
+
+settings[colour_scheme] = 2
+
+files[] = template.php

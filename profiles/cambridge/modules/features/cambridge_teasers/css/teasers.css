@@ -1,0 +1,39 @@
+.campl-teaser p.campl-datestamp {
+    color: #777777;
+    background: none;
+    font-weight: normal;
+    font-style: italic;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.campl-promo-teaser .campl-vertical-teaser-txt.campl-no-top-padding {
+    padding-top: 0;
+}
+
+.campl-teasers-borders .campl-teaser-border {
+    border-left: 1px solid #e4e4e4;
+    margin-left: -1px;
+    border-right: 1px solid #e4e4e4;
+}
+
+.campl-teasers-borders.campl-column-first .campl-teaser-border {
+    border-left: 0;
+    margin-left: 0;
+}
+
+.campl-column-end.campl-teasers-borders .campl-teaser-border {
+    border-right: 0;
+}
+
+@media (min-width: 768px) {
+    .campl-hide-teaser-divider .campl-teaser-divider {
+        display: none;
+    }
+}
+
+@media (max-width: 767px) {
+    .campl-column-last.campl-hide-teaser-divider .campl-teaser-divider {
+        display: none;
+    }
+}

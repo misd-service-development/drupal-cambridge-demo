@@ -1,0 +1,14 @@
+name = Teasers
+description = Adds University of Cambridge theme teasers node view modes.
+core = 7.x
+package = University of Cambridge
+version = 7.x-1.3
+project = cambridge_teasers
+dependencies[] = cambridge_image_styles
+dependencies[] = features
+features[features_api][] = api:2
+
+stylesheets[all][] = "css/teasers.css"
+
+scripts[] = 'js/teasers.js'
+scripts[] = 'js/jquery.matchHeight-min.js'

@@ -1,0 +1,11 @@
+name = Session Proxy
+description = Session management replacement, more flexible than core one. Enable this module only if you intend to use the core Database cache backend as session storage engine.
+core = 7.x
+package = Performance
+
+; Information added by drupal.org packaging script on 2012-09-25
+version = "7.x-1.0-alpha1"
+core = "7.x"
+project = "session_proxy"
+datestamp = "1348579518"
+

@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Cambridge News feature.
+ */
+
+include_once 'cambridge_news.features.inc';

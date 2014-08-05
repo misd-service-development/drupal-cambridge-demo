@@ -1,0 +1,67 @@
+name = "University of Cambridge"
+description = "Install the standard University of Cambridge features."
+version = 7.x-1.1
+core = 7.x
+
+; core
+
+dependencies[] = block
+dependencies[] = contextual
+dependencies[] = dblog
+dependencies[] = field_ui
+dependencies[] = file
+dependencies[] = image
+dependencies[] = list
+dependencies[] = menu
+dependencies[] = number
+dependencies[] = options
+dependencies[] = overlay
+dependencies[] = path
+dependencies[] = rdf
+dependencies[] = search
+dependencies[] = shortcut
+dependencies[] = taxonomy
+
+; contrib
+
+dependencies[] = admin_menu
+dependencies[] = admin_menu_toolbar
+dependencies[] = ckeditor
+dependencies[] = date
+dependencies[] = email
+dependencies[] = features
+dependencies[] = fe_block
+dependencies[] = field_collection
+dependencies[] = globalredirect
+dependencies[] = imagecrop
+dependencies[] = link
+dependencies[] = media
+dependencies[] = menu_block
+dependencies[] = menu_firstchild
+dependencies[] = menu_force
+dependencies[] = menu_trail_by_path
+dependencies[] = metatag
+dependencies[] = metatag_dc
+dependencies[] = metatag_views
+dependencies[] = pathauto
+dependencies[] = raven
+dependencies[] = realname
+dependencies[] = redirect
+dependencies[] = smart_trim
+dependencies[] = token
+dependencies[] = transliteration
+dependencies[] = views
+dependencies[] = views_ui
+dependencies[] = workbench
+dependencies[] = workbench_media
+
+; features
+
+dependencies[] = body_field_definition
+dependencies[] = cambridge_carousel
+dependencies[] = cambridge_image_styles
+dependencies[] = cambridge_link
+dependencies[] = cambridge_news
+dependencies[] = cambridge_questions_and_answers
+dependencies[] = cambridge_related_links
+dependencies[] = cambridge_teasers

@@ -1,0 +1,116 @@
+<?php
+/**
+ * @file
+ * Code for the Related links feature.
+ */
+
+include_once 'cambridge_related_links.features.inc';
+
+/**
+ * Implements hook_form_FORM_ID_alter() for field_ui_field_overview_form().
+ *
+ * In the Manage Fields form for a content type the 'Add existing field'
+ * options is (annoyingly) only populated by fields which have instances, which
+ * our fields don't have when first enabling the feature. This adds them in to
+ * the list so that they can actually be created.
+ */
+function cambridge_related_links_form_field_ui_field_overview_form_alter(&$form, &$form_state, $form_id) {
+  if (
+    // Isn't already on this content type
+    !array_key_exists('field_related_links', $form['fields'])
+    &&
+    // The field base still exists
+    field_info_field('field_related_links') !== NULL
+  ) {
+    if (!array_key_exists('_add_existing_field', $form['fields'])) {
+      $form['fields']['_add_existing_field'] = _cambridge_related_links_add_existing_field($form);
+    }
+
+    // Isn't already in the list
+    if (!array_key_exists('field_related_links', $form['fields']['_add_existing_field']['field_name']['#options'])) {
+      // Add the option and reorder
+      $form['fields']['_add_existing_field']['field_name']['#options']['field_related_links'] = 'Link: field_related_links (Related links)';
+      ksort($form['fields']['_add_existing_field']['field_name']['#options']);
+
+      // Handle the JavaScript field population
+      $form['#attached']['js'][1]['data']['fields']['field_related_links'] = array(
+        'label' => 'Related links',
+        'type' => 'link_field',
+        'widget' => 'link_field'
+      );
+    }
+  }
+}
+
+/**
+ * Get replica of Field UI's add existing field row.
+ */
+function _cambridge_related_links_add_existing_field($form) {
+  $max_weight = field_info_max_weight($form['#entity_type'], $form['#bundle'], 'form');
+  $widget_type_options = field_ui_widget_type_options(NULL, TRUE);
+  $name = '_add_existing_field';
+
+  return array(
+    '#attributes' => array('class' => array('draggable', 'tabledrag-leaf', 'add-new')),
+    '#row_type' => 'add_new_field',
+    '#region_callback' => 'field_ui_field_overview_row_region',
+    'label' => array(
+      '#type' => 'textfield',
+      '#title' => t('Existing field label'),
+      '#title_display' => 'invisible',
+      '#size' => 15,
+      '#description' => t('Label'),
+      '#attributes' => array('class' => array('label-textfield')),
+      '#prefix' => '<div class="label-input"><div class="add-new-placeholder">' . t('Add existing field') . '</div>',
+      '#suffix' => '</div>',
+    ),
+    'weight' => array(
+      '#type' => 'textfield',
+      '#default_value' => $max_weight + 2,
+      '#size' => 3,
+      '#title_display' => 'invisible',
+      '#title' => t('Weight for added field'),
+      '#attributes' => array('class' => array('field-weight')),
+      '#prefix' => '<div class="add-new-placeholder">&nbsp;</div>',
+    ),
+    'parent_wrapper' => array(
+      'parent' => array(
+        '#type' => 'select',
+        '#title' => t('Parent for existing field'),
+        '#title_display' => 'invisible',
+        '#options' => $form['fields']['#parent_options'],
+        '#empty_value' => '',
+        '#attributes' => array('class' => array('field-parent')),
+        '#prefix' => '<div class="add-new-placeholder">&nbsp;</div>',
+        '#parents' => array('fields', $name, 'parent'),
+      ),
+      'hidden_name' => array(
+        '#type' => 'hidden',
+        '#default_value' => $name,
+        '#attributes' => array('class' => array('field-name')),
+      ),
+    ),
+    'field_name' => array(
+      '#type' => 'select',
+      '#title' => t('Existing field to share'),
+      '#title_display' => 'invisible',
+      '#options' => array(),
+      '#empty_option' => t('- Select an existing field -'),
+      '#description' => t('Field to share'),
+      '#attributes' => array('class' => array('field-select')),
+      '#cell_attributes' => array('colspan' => 2),
+      '#prefix' => '<div class="add-new-placeholder">&nbsp;</div>',
+    ),
+    'widget_type' => array(
+      '#type' => 'select',
+      '#title' => t('Widget for existing field'),
+      '#title_display' => 'invisible',
+      '#options' => $widget_type_options,
+      '#empty_option' => t('- Select a widget -'),
+      '#description' => t('Form element to edit the data.'),
+      '#attributes' => array('class' => array('widget-type-select')),
+      '#cell_attributes' => array('colspan' => 3),
+      '#prefix' => '<div class="add-new-placeholder">&nbsp;</div>',
+    ),
+  );
+}

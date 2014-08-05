@@ -1,0 +1,29 @@
+{
+    "name": "misd/raven-module-tests",
+    "license": "GPL-2.0",
+    "authors": [
+        {
+            "name": "Chris Wilkinson",
+            "email": "chris.wilkinson@admin.cam.ac.uk"
+        }
+    ],
+    "autoload": {
+        "classmap": ["features/bootstrap/"],
+        "files": ["features/bootstrap/functions.php"]
+    },
+    "require": {
+        "php": ">=5.2.0",
+        "ext-openssl": "*",
+        "behat/behat": "~2.0",
+        "behat/mink": "~1.0",
+        "behat/mink-extension": "~1.0",
+        "behat/mink-goutte-driver": "~1.0",
+        "drush/drush": "~6.0",
+        "symfony/filesystem": "~2.3",
+        "symfony/finder": "~2.3",
+        "symfony/process": "~2.3"
+    },
+    "config": {
+        "bin-dir": "bin/"
+    }
+}

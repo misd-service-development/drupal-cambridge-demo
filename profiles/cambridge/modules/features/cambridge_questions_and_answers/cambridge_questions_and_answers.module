@@ -1,0 +1,44 @@
+<?php
+/**
+ * @file
+ * Code for the Questions and answers feature.
+ */
+
+include_once 'cambridge_questions_and_answers.features.inc';
+
+/**
+ * Implements hook_theme_registry_alter().
+ */
+function cambridge_questions_and_answers_theme_registry_alter(&$theme_registry) {
+  $theme_registry['field__field_question__field_questions_and_answers'] = array(
+    'template' => drupal_get_path(
+      'module',
+      'cambridge_questions_and_answers'
+    ) . '/templates/field--field-question--field-questions-and-answers',
+    'type' => 'module',
+  );
+}
+
+/**
+ * Implements template_preprocess_page().
+ */
+function cambridge_questions_and_answers_preprocess_page(&$variables) {
+  if (FALSE === isset($variables['node']) || $variables['node']->type !== 'questions_and_answers') {
+    return;
+  }
+
+  drupal_add_js(drupal_get_path('module', 'cambridge_questions_and_answers') . '/js/questions_and_answers.js');
+  drupal_add_css(
+    drupal_get_path('module', 'cambridge_questions_and_answers') . '/css/questions_and_answers.css',
+    array('media' => 'screen')
+  );
+}
+
+/**
+ * Implements template_preprocess_field().
+ */
+function cambridge_questions_and_answers_preprocess_field(&$variables, $hook) {
+  if ('field_answer' === $variables['element']['#field_name']) {
+    $variables['classes_array'][] = 'campl-questions-answer';
+  }
+}

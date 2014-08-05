@@ -1,0 +1,10 @@
+default:
+    context:
+        class: Misd\Drupal\RavenModule\FeatureContext
+        parameters:
+            drupal_path: '/var/www/drupal'
+    extensions:
+        Behat\MinkExtension\Extension:
+            base_url: 'http://localhost/'
+            default_session: 'goutte'
+            goutte: ~

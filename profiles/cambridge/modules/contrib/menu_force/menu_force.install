@@ -1,0 +1,15 @@
+<?php
+/**
+ * @file
+ * Install, update and uninstall functions for the Menu Force module.
+ */
+
+/**
+ * Implement hook_uninstall().
+ */
+function menu_force_uninstall() {
+  $node_types = node_type_get_types();
+  foreach ($node_types as $type) {
+    variable_del('menu_force_' . $type->type);
+  }
+}

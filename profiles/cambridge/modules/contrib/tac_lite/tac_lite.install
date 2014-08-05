@@ -1,0 +1,118 @@
+<?php
+
+/**
+ * @file
+ *   Installation functions for tac_lite.
+ *   TODO: All updates need proper error handling and responses
+ */
+
+/**
+ * Implementation of hook_install().
+ *
+ * Ensure that tac_lite hooks are invoked after taxonomy module hooks.
+ */
+function tac_lite_install() {
+  $taxonomy_weight = db_query("SELECT weight FROM {system} WHERE name = 'taxonomy'")->fetchField();
+  $num_updated = db_update('system')
+  ->fields(array(
+    'weight' => $taxonomy_weight + 9,
+  ))
+  ->condition('name', 'tac_lite')
+  ->execute();
+
+  // Note that it is not necessary to rebuild the node access table here, as
+  // that will be done when module settings are saved.
+}
+
+/**
+ * Implements hook_uninstall().
+ *
+ * Clean up tac_lite variables.
+ */
+function tac_lite_uninstall() {
+  for ($i = 1; $i <= variable_get('tac_lite_schemes', 1); $i++) {
+    variable_del('tac_lite_config_scheme_' . $i);
+    variable_del('tac_lite_grants_scheme_' . $i);
+  }
+  variable_del('tac_lite_schemes');
+  variable_del('tac_lite_categories');
+}
+
+/**
+ * Ensure that tac_lite hooks are invoked after taxonomy module hooks.
+ */
+function tac_lite_update_1() {
+  $taxonomy_weight = db_query("SELECT weight FROM {system} WHERE name = 'taxonomy'")->fetchField();
+  $num_updated = db_update('system')
+  ->fields(array(
+    'weight' => $taxonomy_weight + 9,
+  ))
+  ->condition('name', 'tac_lite')
+  ->execute();
+}
+
+/**
+ * Ensure that the node_access table is thoroughly cleaned up in Drupal 5 update.
+ */
+function tac_lite_update_2() {
+  node_access_rebuild(); // Would batch mode help here?
+  // Assume success and return with message.
+  return t('Rebuilt node access table for tac_lite module.');
+}
+
+/**
+ * Introducing schemes. Rename tac_lite_default_grants to tac_lite_grants_scheme_1.
+ */
+function tac_lite_update_3() {
+  $num_updated = db_update('variable')
+  ->fields(array(
+    'name' => 'tac_lite_grants_scheme_1',
+  ))
+  ->condition('name', 'tac_lite_default_grants')
+  ->execute();
+}
+
+/**
+ * Start of updates to Drupal 6.x-1.2. Start using Drupal standard
+ * update numbers.
+ */
+
+/**
+ * Rename permission from "administer_tac_lite" to "administer
+ * tac_lite" for UI consistency.
+ */
+function tac_lite_update_6001() {
+  // TODO: Please review to make sure this is handling this update properly for this version of code. (only change was formatting and table name)
+  $result = db_query("SELECT * FROM {role_permission} WHERE perm LIKE '%administer_tac_lite%'");
+  foreach ($result as $permission) {
+    $perm = str_replace('administer_tac_lite', 'administer tac_lite', $permission->perm);
+    //db_query("UPDATE {permission} SET perm = '". db_escape_string($perm) ."' WHERE rid =". $permission->rid);
+    $num_updated = db_update('permission')
+    ->fields(array(
+      'perm' => $perm,
+    ))
+    ->condition('rid', $permission->rid)
+    ->execute();
+  }
+}
+
+/**
+ * The tac_lite.module now supports an option to apply access by taxonomy to unpublished nodes as well as published content.  The default behavior is that tac_lite has no effect on unpublished content.  You should review each of your tac_lite schemes and, optionally, adjust this setting before rebuilding node access permissions.
+ */
+function tac_lite_update_7001() {
+  //  See https://drupal.org/node/1918272 for details.
+  drupal_set_message(t('Please review each of your <a href="!url">taxonomy access control schemes</a>.  If necessary, adjust the new option to affect access to unpublished content.  Then rebuild content access permissions.', array(
+        '!url' => url('admin/config/people/tac_lite'),
+      )));
+  node_access_needs_rebuild(TRUE);
+}
+
+/**
+ * Rebuild node_access permissions, for sites upgrading from tac_lite 1.0 (or
+ * 1.1) to 1.2.  This will fix a bug in which some nodes were erroneously added
+ * to the node_access table.  You will be prompted to rebuild access permissions
+ * after the update process is complete. (See the status report page.)
+ */
+function tac_lite_update_7002() {
+  node_access_needs_rebuild(TRUE);
+}

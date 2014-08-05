@@ -1,0 +1,12 @@
+name = Carousel
+description = Adds a carousel item node view mode.
+core = 7.x
+package = University of Cambridge
+version = 7.x-1.0
+project = cambridge_carousel
+dependencies[] = cambridge_image_styles
+features[ctools][] = views:views_default:3.0
+features[features_api][] = api:2
+features_exclude[dependencies][ctools] = ctools
+features_exclude[dependencies][features] = features
+features_exclude[dependencies][image] = image

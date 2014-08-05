@@ -1,0 +1,26 @@
+language: php
+
+php:
+  - 5.3
+  - 5.4
+  - 5.5
+
+before_install:
+  - sudo apt-get update
+
+install:
+  - sudo apt-get install apache2 libapache2-mod-fastcgi
+  - sudo a2enmod rewrite actions fastcgi alias
+  - composer install --working-dir tests --dev --prefer-source --no-interaction
+
+before_script:
+  - sudo cp ~/.phpenv/versions/$(phpenv version-name)/etc/php-fpm.conf.default ~/.phpenv/versions/$(phpenv version-name)/etc/php-fpm.conf
+  - echo "cgi.fix_pathinfo = 1" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
+  - ~/.phpenv/versions/$(phpenv version-name)/sbin/php-fpm
+  - sudo cp -f tests/.travis/apache-vhost.conf /etc/apache2/sites-available/default
+  - mkdir ../drupal
+  - sudo sed -i -e "s?%DRUPAL_DIR%?$(pwd)/../drupal?g" /etc/apache2/sites-available/default
+  - sudo service apache2 restart
+
+script:
+  - tests/bin/behat --config tests/.travis/behat.yml --format progress --strict

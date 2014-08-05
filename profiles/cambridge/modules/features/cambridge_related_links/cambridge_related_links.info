@@ -1,0 +1,16 @@
+name = Related links
+description = Adds a related links field and an associated view.
+core = 7.x
+package = University of Cambridge
+version = 7.x-1.1
+project = cambridge_related_links
+dependencies[] = fe_block
+dependencies[] = features
+dependencies[] = link
+dependencies[] = views
+features[ctools][] = views:views_default:3.0
+features[fe_block_settings][] = views-related_links-block
+features[features_api][] = api:2
+features[field_base][] = field_related_links
+features[views_view][] = related_links
+features_exclude[dependencies][ctools] = ctools

@@ -1,0 +1,15 @@
+<?php
+
+/**
+ * @file
+ * Session Proxy schema.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function session_proxy_schema() {
+  $schema = array();
+  $schema['cache_sessions'] = drupal_get_schema_unprocessed('system', 'cache');
+  return $schema;
+}

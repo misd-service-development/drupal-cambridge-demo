@@ -1,0 +1,81 @@
+<?php
+
+/**
+ * @file
+ * Install, update, and uninstall functions for the Raven authentication module.
+ */
+
+/**
+ * Implements hook_requirements().
+ */
+function raven_requirements($phase) {
+  $requirements = array();
+
+  if (function_exists("openssl_verify") === FALSE) {
+    $requirements['openssl'] = array(
+      'title' => st('PHP OpenSSL library'),
+      'value' => st('Not installed'),
+      'description' => st('The <a href="@url">PHP OpenSSL library</a> is not installed', array('@url' => 'http://www.php.net/manual/en/book.openssl.php')),
+      'severity' => REQUIREMENT_ERROR,
+    );
+  }
+
+  return $requirements;
+}
+
+/**
+ * Implements hook_install().
+ */
+function raven_install() {
+  // Insert variables
+  variable_set('raven_login_override', FALSE);
+  variable_set('raven_backdoor_login', TRUE);
+  variable_set('raven_website_description', NULL);
+  variable_set('raven_login_fail_redirect', NULL);
+  variable_set('raven_logout_on_browser_close', TRUE);
+  variable_set('raven_override_administrator_approval', FALSE);
+  variable_set('raven_allow_raven_for_life', FALSE);
+  variable_set('raven_service', 'live');
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function raven_uninstall() {
+  // Delete set variables
+  variable_del('raven_login_override');
+  variable_del('raven_backdoor_login');
+  variable_del('raven_website_description');
+  variable_del('raven_login_fail_redirect');
+  variable_del('raven_logout_on_browser_close');
+  variable_del('raven_override_administrator_approval');
+  variable_del('raven_allow_raven_for_life');
+  variable_del('raven_service');
+
+  // Delete authmap entries
+  db_delete('authmap')
+    ->condition('module', 'raven')
+    ->execute();
+}
+
+/**
+ * Set the Raven for Life variable.
+ */
+function raven_update_7100() {
+  if (NULL !== variable_get('raven_allow_raven_for_life')) {
+    return;
+  }
+
+  variable_set('raven_allow_raven_for_life', FALSE);
+}
+
+/**
+ * Set the Raven service variable.
+ */
+function raven_update_7101() {
+  if (NULL !== variable_get('raven_service')) {
+    return;
+  }
+
+  variable_set('raven_service', 'live');
+}

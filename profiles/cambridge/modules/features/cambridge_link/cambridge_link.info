@@ -1,0 +1,10 @@
+name = Link
+description = Allow carousel items and teasers to link to a custom URL rather than to the node.
+core = 7.x
+package = University of Cambridge
+version = 7.x-1.0
+project = cambridge_link
+dependencies[] = features
+dependencies[] = link
+features[features_api][] = api:2
+features[field_base][] = field_link
