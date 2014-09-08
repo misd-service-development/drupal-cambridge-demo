@@ -13,7 +13,7 @@ class SessionProxy_Backend_Default extends SessionProxy_Backend_Base {
    * Session write proxy that will allow us to disable session writing if
    * we are master of the storage.
    */
-  protected function writeProxy($sessionId, $serializedData) {
+  public function writeProxy($sessionId, $serializedData) {
     if ($this->isWriteEnabled()) {
       $this->storage->write($sessionId, $serializedData);
     }
