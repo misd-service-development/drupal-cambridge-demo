@@ -19,6 +19,8 @@ This demo site can be installed anywhere [Drupal 7 can normally run](https://www
 
 For example, if you have Apache running locally you can put it in a folder called `drupal-demo` in your document root, then simply open `http://localhost/drupal-demo/` in your browser.
 
+In you're using PHP 5.4 or later, you can use the built-in web server instead. Having executed `php -S localhost:8888` in the directory, for example, it would then be accessible at `http://localhost:8888/`
+
 How to use
 ----------
 
