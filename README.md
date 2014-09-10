@@ -15,7 +15,9 @@ The Drupal core and the install profile will be kept up to date. More content/ex
 How to install
 --------------
 
-This demo site can be installed anywhere [Drupal 7 can normally run](https://www.drupal.org/requirements) (for the database it uses SQLite). To install, simply put it somewhere behind a server.
+The demo site can be downloaded from GitHub (as a [ZIP](https://github.com/misd-service-development/drupal-cambridge-demo/archive/master.zip) or a [compressed TAR](https://github.com/misd-service-development/drupal-cambridge-demo/archive/master.tar.gz)).
+
+It can be installed anywhere [Drupal 7 can normally run](https://www.drupal.org/requirements) (for the database it uses SQLite). To install, simply put it somewhere behind a server.
 
 For example, if you have Apache running locally you can put it in a folder called `drupal-demo` in your document root, then simply open `http://localhost/drupal-demo/` in your browser.
 
