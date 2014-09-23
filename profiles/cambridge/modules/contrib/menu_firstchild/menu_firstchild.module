@@ -101,3 +101,38 @@ function menu_firstchild_form_alter(&$form, $form_state, $form_id) {
     }
   }
 }
+
+/**
+ * Implementation of hook_tokens_alter().
+ */
+function menu_firstchild_tokens_alter(array &$replacements, array $context) {
+  if (isset($replacements['[node:menu-link:parent:url:path]'])) {
+    if (isset($context['data']['menu-link']) && ($context['data']['menu-link']['link_path'] === '<firstchild>')) {
+      $parent = _menu_firstchild_find_non_firstchild_parent($context['data']['menu-link']);
+
+      $replacements['[node:menu-link:parent:url:path]'] = drupal_get_path_alias($parent['link_path']);
+    }
+
+    if ($replacements['[node:menu-link:parent:url:path]'] === '<firstchild>') {
+      $replacements['[node:menu-link:parent:url:path]'] = '';
+    }
+  }
+}
+
+function _menu_firstchild_find_non_firstchild_parent(array $menu_link) {
+  if ($menu_link['link_path'] !== '<firstchild>') {
+    return $menu_link;
+  }
+
+  $parent = menu_link_load($menu_link['plid']);
+
+  if (FALSE === $parent) {
+    return $menu_link;
+  }
+
+  if ($parent['link_path'] === '<firstchild>') {
+    $parent = _menu_firstchild_find_non_firstchild_parent($parent);
+  }
+
+  return $parent;
+}

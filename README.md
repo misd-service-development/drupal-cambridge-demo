@@ -7,7 +7,7 @@ What it contains
 ----------------
 
 - Latest version of Drupal (currently [7.31](https://www.drupal.org/drupal-7.31-release-notes)).
-- Latest version of the University of Cambridge full install profile (currently [1.1](https://github.com/misd-service-development/drupal-cambridge-profile/releases/tag/7.x-1.1-full)).
+- Latest version of the University of Cambridge full install profile (currently [1.2](https://github.com/misd-service-development/drupal-cambridge-profile/releases/tag/7.x-1.2-full)).
 - Demo content/configuration.
 
 The Drupal core and the install profile will be kept up to date. More content/examples will also be added over time; if you have any suggestions please email webmaster@admin.cam.ac.uk or ideally [open an issue](https://github.com/misd-service-development/drupal-cambridge-demo/issues).

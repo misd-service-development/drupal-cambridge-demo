@@ -140,3 +140,39 @@ Feature: Login override
     And I should not see "Password" in the "#block-user-login" element
     When I follow "Log in with Raven"
     Then I should be on "https://demo.raven.cam.ac.uk/auth/authenticate.html"
+
+  Scenario: Compatible with r4032login module when can't create an account
+    Given the "r4032login" module is enabled
+    And the "raven_login_override" variable is set to "TRUE"
+    And the "user_register" variable is set to "0"
+    When I go to "/admin"
+    And I fill in "User-id" with "test0001"
+    And I fill in "Password" with "test"
+    And I press "Submit"
+    Then I should be on the homepage
+    And I should not see "Access denied. You must log in to view this page."
+    And I should see "Only site administrators can create accounts."
+
+  Scenario: Compatible with r4032login module when need account to be confirmed
+    Given the "r4032login" module is enabled
+    And the "raven_login_override" variable is set to "TRUE"
+    And the "user_register" variable is set to "2"
+    When I go to "/admin"
+    And I fill in "User-id" with "test0001"
+    And I fill in "Password" with "test"
+    And I press "Submit"
+    Then I should be on the homepage
+    And I should not see "Access denied. You must log in to view this page."
+    And I should see "Thank you for applying for an account. Your account is currently pending approval by the site administrator."
+
+  Scenario: Compatible with r4032login module when can create account
+    Given the "r4032login" module is enabled
+    And the "raven_login_override" variable is set to "TRUE"
+    And the "user_register" variable is set to "1"
+    When I go to "/admin"
+    And I fill in "User-id" with "test0001"
+    And I fill in "Password" with "test"
+    And I press "Submit"
+    Then I should be on "/admin"
+    And I should not see "Access denied. You must log in to view this page."
+    And I should see "You are not authorized to access this page."

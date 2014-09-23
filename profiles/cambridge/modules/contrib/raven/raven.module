@@ -18,7 +18,7 @@ function raven_help($path, $arg) {
       $output .= '<h3>' . t('About') . '</h3>';
       $output .= '<p>' . t('The Raven authentication module allows users to log in using <a href="@raven_url">Raven</a>, the University of Cambridge\'s central web authentication service. It can replace, or co-exist with, the standard Drupal authentication method.', array('@raven_url' => 'http://raven.cam.ac.uk/')) . '</p>';
 
-      $output .= '<h3>' . t('Uses') . '</h3>';
+      $output .= '<h3>' . t('Users') . '</h3>';
       $output .= '<dl>';
 
       $output .= '<dt>' . t('Creating Raven users') . '</dt>';
@@ -107,7 +107,7 @@ function raven_menu_site_status_alter(&$menu_site_status, $path) {
  *   TRUE if enable, FALSE otherwise
  */
 function raven_backdoor_login_is_enabled() {
-  return (variable_get('raven_login_override') == TRUE) * (variable_get('raven_backdoor_login') == TRUE);
+  return (variable_get('raven_login_override', FALSE) == TRUE) * (variable_get('raven_backdoor_login', TRUE) == TRUE);
 }
 
 /**
@@ -138,23 +138,29 @@ function raven_login($redirect = NULL) {
   global $base_url;
 
   if ($redirect === NULL) {
-    $redirect = ($_SERVER['HTTP_REFERER'] != NULL ? $_SERVER['HTTP_REFERER'] : $base_url);
+    if (isset($_GET['destination']) && FALSE === url_is_external($_GET['destination'])) {
+      $redirect = $_GET['destination'];
+    }
+    elseif (NULL != $_SERVER['HTTP_REFERER']) {
+      $redirect = $_SERVER['HTTP_REFERER'];
+    }
+    else {
+      $redirect = $base_url . '/';
+    }
   }
 
   $website_description = variable_get('raven_website_description');
 
   $params['ver'] = '3';
-  $params['url'] = urlencode($base_url . '/');
-  $params['desc'] = urlencode(!empty($website_description) ? $website_description : variable_get('site_name', $base_url));
-  $params['params'] = urlencode(url($redirect, array('absolute' => TRUE)));
+  $params['url'] = $base_url . '/';
+  $params['desc'] = !empty($website_description) ? $website_description : variable_get('site_name', $base_url);
+  $params['params'] = url($redirect, array('absolute' => TRUE));
 
-  $parameters = array();
-  foreach ($params as $key => $val) {
-    $parameters[] = $key . '=' . utf8_encode($val);
-  }
-  $parameters = implode('&', $parameters);
+  // Remove any messages (such as 'You need to log in') to stop them appearing on the next page.
+  drupal_get_messages();
 
-  drupal_goto(get_raven_url() . '?' . $parameters, array(), 303);
+  unset($_GET['destination']);
+  drupal_goto(get_raven_url(), array('query' => $params), 303);
 }
 
 /**
@@ -248,7 +254,7 @@ function raven_auth() {
     }
 
     // Raven for Life check
-    if (isset($r_ptags) && $r_ptags !== 'current' && variable_get('raven_allow_raven_for_life') != TRUE) {
+    if (isset($r_ptags) && $r_ptags !== 'current' && variable_get('raven_allow_raven_for_life', FALSE) != TRUE) {
       drupal_set_message(t('Raven for Life accounts are not allowed to access the site.'), 'error');
       watchdog('raven', 'Raven for Life account @raven_id denied access.', array('@raven_id' => $r_principal), WATCHDOG_INFO);
       drupal_goto(variable_get('raven_login_fail_redirect'));
@@ -449,7 +455,7 @@ function raven_block_view_alter(&$data, $block) {
     return;
   }
 
-  if ($block->delta === 'login' && variable_get('raven_login_override') == TRUE) {
+  if ($block->delta === 'login' && variable_get('raven_login_override', FALSE) == TRUE) {
     $data['content'] = '<ul><li>' . t('<a href="@raven_login_path">Log in with Raven</a>', array('@raven_login_path' => url('raven/login'))) . '</li></ul>';
   }
 }
@@ -487,7 +493,7 @@ function user_raven_login_register($name) {
   $edit = array();
   $account = user_external_load($name);
 
-  if (variable_get('raven_logout_on_browser_close') == TRUE) {
+  if (variable_get('raven_logout_on_browser_close', TRUE) == TRUE) {
     ini_set('session.cookie_lifetime', 0);
   }
 
@@ -497,13 +503,14 @@ function user_raven_login_register($name) {
     if ($account === FALSE) {
       // User does not exist yet
       // Check if overriding admin approval is set
-      if (variable_get('raven_override_administrator_approval')) {
+      if (variable_get('raven_override_administrator_approval', FALSE)) {
         $status = 1;
       }
       else {
         switch (variable_get('user_register')) {
           case USER_REGISTER_ADMINISTRATORS_ONLY:
             drupal_set_message(t('Only site administrators can create accounts.'), 'error');
+            unset($_GET['destination']);
             drupal_goto(variable_get('raven_login_fail_redirect'));
             break;
           case USER_REGISTER_VISITORS_ADMINISTRATIVE_APPROVAL:
@@ -528,7 +535,7 @@ function user_raven_login_register($name) {
       drupal_alter('raven_register', $edit, $account);
       watchdog('raven', 'New user: @name (@email).', array(
         '@name' => $edit['name'],
-        '@email' => $edit['init'],
+        '@email' => $edit['mail'],
         WATCHDOG_NOTICE,
         l(t('edit'), 'user/' . $account->uid . '/edit')
       ));
@@ -570,7 +577,8 @@ function user_raven_login_register($name) {
 
   global $user;
 
-  if (!$user->uid) {
+  if (!$user->uid || $user->status == 0) {
+    unset($_GET['destination']);
     drupal_goto(variable_get('raven_login_fail_redirect'));
   }
 }

@@ -15,7 +15,7 @@ function raven_requirements($phase) {
     $requirements['openssl'] = array(
       'title' => st('PHP OpenSSL library'),
       'value' => st('Not installed'),
-      'description' => st('The <a href="@url">PHP OpenSSL library</a> is not installed', array('@url' => 'http://www.php.net/manual/en/book.openssl.php')),
+      'description' => st('The <a href="@url">PHP OpenSSL library</a> is not installed', array('@url' => 'http://php.net/openssl')),
       'severity' => REQUIREMENT_ERROR,
     );
   }

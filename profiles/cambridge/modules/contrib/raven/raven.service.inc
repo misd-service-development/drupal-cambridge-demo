@@ -1,6 +1,6 @@
 <?php
 
-if ('demo' === variable_get('raven_service')) {
+if ('demo' === variable_get('raven_service', 'live')) {
 
   function get_raven_pubkey() {
     return '-----BEGIN CERTIFICATE-----

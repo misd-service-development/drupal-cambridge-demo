@@ -53,6 +53,13 @@ function cambridge_theme_theme($existing, $type, $theme, $path) {
 }
 
 /**
+ * Implements template_preprocess_maintenance_page().
+ */
+function cambridge_theme_preprocess_maintenance_page(&$variables) {
+  drupal_add_css(path_to_theme() . '/css/maintenance.css', array('group' => CSS_THEME, 'preprocess' => FALSE));
+}
+
+/**
  * Implements template_preprocess_html().
  */
 function cambridge_theme_preprocess_html(&$variables) {
@@ -208,6 +215,9 @@ function cambridge_theme_preprocess_block(&$variables) {
       // but it can be a form
       isset($variables['elements']['#form_id'])
       ||
+      // or a comment form
+      isset($variables['elements']['comment_form'])
+      ||
       // or a user profile
       (isset($variables['elements']['#theme']) && $variables['elements']['#theme'] === 'user_profile')
       ||
@@ -251,10 +261,17 @@ function cambridge_theme_preprocess_block(&$variables) {
 }
 
 /**
+ * Implements hook_form_FORM_ID_alter() for a Views exposed form.
+ */
+function cambridge_theme_form_views_exposed_form_alter(&$form) {
+  $form['#attributes']['class'][] = 'campl-content-container';
+}
+
+/**
  * Implements hook_menu_block_tree_alter().
  */
 function cambridge_theme_menu_block_tree_alter(&$tree, &$config) {
-  $block = block_load('menu_block', $config['delta']);
+  $block = _cambridge_theme_block_load('menu_block', $config['delta']);
 
   if ('left_navigation' === $block->region) {
     // Force menu block configuration.
@@ -291,7 +308,16 @@ function cambridge_theme_menu_block_tree_alter(&$tree, &$config) {
  */
 function _cambridge_theme_add_horizontal_navigation_overview_items($items) {
   foreach ($items as $item) {
-    if (0 === count($item['below'])) {
+    $has_children = FALSE;
+
+    foreach ($item['below'] as $child) {
+      if (TRUE != $child['link']['hidden']) {
+        $has_children = TRUE;
+        break;
+      }
+    }
+
+    if (FALSE === $has_children) {
       continue;
     }
 
@@ -356,6 +382,10 @@ function cambridge_theme_status_messages($variables) {
  * Implements theme_image().
  */
 function cambridge_theme_image($variables) {
+  if (isset($variables['attributes']['class']) && FALSE === is_array($variables['attributes']['class'])) {
+    $variables['attributes']['class'] = array($variables['attributes']['class']);
+  }
+
   // Make sure class is added to all images.
   $variables['attributes']['class'][] = 'campl-scale-with-grid';
 
@@ -551,16 +581,11 @@ function cambridge_theme_block_view_alter(&$data, $block) {
 
       _cambridge_theme_left_navigation_break_up($active, $breadcrumbs, $navigation);
 
-      // Add in overview-style links when necessary.
+      // Stop the category being a link when on the page.
 
       $key = key($navigation);
 
-      if (count($navigation[$key]['#below']) > 0) {
-        if ('<firstchild>' !== $navigation[$key]['#original_link']['link_path']) {
-          $navigation[$key]['#below'] = $navigation + $navigation[$key]['#below'];
-          $navigation[$key]['#below'][$key]['#title'] .= ' overview';
-        }
-
+      if (in_array('active', $navigation[$key]['#attributes']['class'])) {
         $navigation[$key]['#attributes']['class'][] = 'campl-selected';
         $navigation[$key]['#href'] = '<none>';
       }
@@ -1167,4 +1192,31 @@ function theme_cambridge_easy_breadcrumb($variables) {
   }
 
   return $html;
+}
+
+/**
+ * Loads a block object from the database for the current theme.
+ *
+ * This is a replica of block_load(), except that it uses the current theme.
+ */
+function _cambridge_theme_block_load($module, $delta) {
+  global $theme;
+
+  if (isset($delta)) {
+    $block = db_query(
+      'SELECT * FROM {block} WHERE module = :module AND delta = :delta AND theme = :theme',
+      array(':module' => $module, ':delta' => $delta, ':theme' => $theme)
+    )->fetchObject();
+  }
+
+  // If the block does not exist in the database yet return a stub block
+  // object.
+  if (empty($block)) {
+    $block = new stdClass();
+    $block->module = $module;
+    $block->delta = $delta;
+    $block->region = NULL;
+  }
+
+  return $block;
 }

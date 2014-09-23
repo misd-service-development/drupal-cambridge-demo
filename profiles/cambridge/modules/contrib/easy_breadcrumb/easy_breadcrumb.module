@@ -139,26 +139,26 @@ function easy_breadcrumb_block_view($delta = NULL) {
  * @return string
  *   HTML for the themed breadcrumb.
  */
-function theme_easy_breadcrumb($variables) {    
-  
+function theme_easy_breadcrumb($variables) {
+
   $breadcrumb = $variables['breadcrumb'];
-  $segments_quantity = $variables['segments_quantity'];  
+  $segments_quantity = $variables['segments_quantity'];
   $separator = $variables['separator'];
 
   $html = '';
 
-  if ($segments_quantity > 0) {    
-    
+  if ($segments_quantity > 0) {
+
     $html .= '<div class="easy-breadcrumb">';
-    
+
     for ($i = 0, $s = $segments_quantity - 1; $i < $segments_quantity; ++$i) {
 			$it = $breadcrumb[$i];
-      $content = decode_entities($it['content']);      
+      $content = decode_entities($it['content']);
 			if (isset($it['url'])) {
 				$html .= l($content, $it['url'], array('attributes' => array('class' => $it['class'])));
 			} else {
         $class = implode(' ', $it['class']);
-				$html .= '<span class="' . $class . '">'	. $content . '</span>';
+				$html .= '<span class="' . $class . '">'	. check_plain($content) . '</span>';
 			}
 			if ($i < $s) {
 				$html .= '<span class="easy-breadcrumb_segment-separator"> ' . $separator . ' </span>';

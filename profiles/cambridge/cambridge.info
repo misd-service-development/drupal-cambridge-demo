@@ -1,6 +1,6 @@
 name = "University of Cambridge"
 description = "Install the standard University of Cambridge features."
-version = 7.x-1.1
+version = 7.x-1.2
 core = 7.x
 
 ; core
@@ -27,6 +27,7 @@ dependencies[] = taxonomy
 dependencies[] = admin_menu
 dependencies[] = admin_menu_toolbar
 dependencies[] = ckeditor
+dependencies[] = ckeditor_link
 dependencies[] = date
 dependencies[] = email
 dependencies[] = features
@@ -44,6 +45,7 @@ dependencies[] = metatag
 dependencies[] = metatag_dc
 dependencies[] = metatag_views
 dependencies[] = pathauto
+dependencies[] = pathauto_persist
 dependencies[] = raven
 dependencies[] = realname
 dependencies[] = redirect

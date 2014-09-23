@@ -1,6 +1,19 @@
 Changelog
 =========
 
+7.x-1.2
+-------
+
+10 September 2014.
+
+* Log the real email address when creating a user in case another module has changed it (from the generic `CRSid@cam.ac.uk` form).
+* Let Drupal construct the query string when redirecting to Raven.
+* Fixed a typo on the help page.
+* Fixed a bug where the `destination` query string parameter was not handled correctly.
+* Made compatible with the [Redirect 403 to User Login](https://www.drupal.org/project/r4032login) module.
+* Use sensible defaults for variables in case they are unavailable.
+* Use php.net short URLs.
+
 7.x-1.1
 -------
 
