@@ -29,3 +29,6 @@ $conf['file_temporary_path'] = sys_get_temp_dir();
 
 // In case URL rewriting isn't available, disable clean URLs.
 $conf['clean_url'] = 0;
+
+# Don't block any IP addresses.
+$conf["blocked_ips"] = array();
