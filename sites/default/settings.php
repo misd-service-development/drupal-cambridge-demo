@@ -2,15 +2,15 @@
 
 // Use SQLite database.
 $databases = array(
+  'default' =>
+  array(
     'default' =>
     array(
-        'default' =>
-        array(
-            'database' => 'sites/default/files/.ht.sqlite',
-            'driver' => 'sqlite',
-            'prefix' => '',
-        ),
+      'database' => 'sites/default/files/.ht.sqlite',
+      'driver' => 'sqlite',
+      'prefix' => '',
     ),
+  ),
 );
 
 // Cache in the filesystem to avoid problems when moving between locations/servers.
