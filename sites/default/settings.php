@@ -31,7 +31,7 @@ $conf['file_temporary_path'] = sys_get_temp_dir();
 $conf['clean_url'] = 0;
 
 # Don't block any IP addresses.
-$conf["blocked_ips"] = array();
+$conf['blocked_ips'] = array();
 
 # Stop Drupal trying to run cron.
 $conf['cron_safe_threshold'] = 0;
