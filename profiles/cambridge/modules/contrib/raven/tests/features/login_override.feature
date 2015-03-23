@@ -51,6 +51,18 @@ Feature: Login override
     | /usEr/register |
     | /usEr/login    |
 
+  Scenario: Doesn't double-language-prefix a path when using destination
+    Given the "raven_login_override" variable is set to "TRUE"
+    And the "user_register" variable is set to "1"
+    And the "i18n" module is enabled
+    And Spanish is enabled
+    When I go to "/es/user/login?destination=es/admin"
+    Then I should be on "https://demo.raven.cam.ac.uk/auth/authenticate.html"
+    And I fill in "User-id" with "test0001"
+    And I fill in "Password" with "test"
+    And I press "Submit"
+    Then I should be on "/es/admin"
+
   Scenario Outline: Overrides user pages when in maintenance mode
     Given the "maintenance_mode" variable is set to "TRUE"
     And the "raven_login_override" variable is set to "TRUE"
@@ -140,6 +152,27 @@ Feature: Login override
     And I should not see "Password" in the "#block-user-login" element
     When I follow "Log in with Raven"
     Then I should be on "https://demo.raven.cam.ac.uk/auth/authenticate.html"
+
+  Scenario: User login block does not appear on backdoor
+    Given the "block" module is enabled
+    And the "raven_login_override" variable is set to "TRUE"
+    And the "raven_backdoor_login" variable is set to "TRUE"
+    And the "user" "login" block is in the "sidebar_first" region
+    When I go to "/user/backdoor/login"
+    Then I should not see a "#block-user-login" element
+
+  Scenario: Alters URL
+    Given the "menu" module is enabled
+    And the "raven_login_override" variable is set to "TRUE"
+    And I am logged in as the admin user
+    When I go to "/admin/structure/menu/manage/main-menu/add"
+    And I fill in "Menu link title" with "Log in"
+    And I fill in "Path" with "user/login"
+    And I press "Save"
+    And I follow "Log out"
+    And I go to "/"
+    Then I should see a "a[href^='/raven/login']:contains('Log in')" element
+    And I should not see a "a[href^='/user/login']:contains('Log in')" element
 
   Scenario: Compatible with r4032login module when can't create an account
     Given the "r4032login" module is enabled

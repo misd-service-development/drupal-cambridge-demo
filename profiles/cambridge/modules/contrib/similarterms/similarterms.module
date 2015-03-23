@@ -1,0 +1,12 @@
+<?php
+
+/**
+ * Implements hook_views_api().
+ * Notifies the Views module that we're compatible with a particular API revision.
+ */
+function similarterms_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'similarterms') . '/views',
+  );
+}

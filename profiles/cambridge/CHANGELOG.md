@@ -1,6 +1,91 @@
 Changelog
 =========
 
+7.x-1.4
+-------
+
+19 March 2015.
+
+* Patched the theme with [updated Project Light assets](https://github.com/misd-service-development/drupal-cambridge-theme/commit/c1056076902e87e6eef838adb202321775b2b310).
+* Patched the Link module with the fix for issue [#2367069](https://www.drupal.org/node/2367069).
+* Patched the Image Styles feature with the fix for issue [#1](https://github.com/misd-service-development/drupal-feature-image-styles/pull/1).
+* Updated Chaos Tools to [1.7](https://www.drupal.org/node/2454883) (see also [1.6](https://drupal.org/node/2415979)).
+* Updated Features to [2.4](https://drupal.org/node/2446159).
+* Updated Menu Block to [2.5](https://www.drupal.org/node/2420375).
+* Updated Token to [1.6](https://www.drupal.org/node/2443407).
+* Updated Views to [3.10](https://www.drupal.org/node/2424103).
+* Added [Automatic Entity Label 1.3](https://www.drupal.org/project/auto_entitylabel).
+* Updated CKEditor library to [4.4.7](http://ckeditor.com/release/CKEditor-4.4.7).
+* Added [Crazy Egg 1.0](https://www.drupal.org/project/crazyegg).
+* Updated Entity API to [1.6](https://www.drupal.org/node/2437885).
+* Updated fancyBox to [2.0-beta5](https://www.drupal.org/node/2422095).
+* Added [Field Validation 2.4](https://www.drupal.org/project/field_validation).
+* Updated Memcache to [1.5](https://www.drupal.org/node/2413389).
+* Added [Module Filter 2.0](https://www.drupal.org/project/module_filter).
+* Added [RESTful Web Services 2.3](https://www.drupal.org/project/restws).
+* Updated Rules to [2.9](https://www.drupal.org/node/2453319) (see also [2.8](https://www.drupal.org/node/2404103)).
+* Added [ShareThis 2.10](https://www.drupal.org/project/sharethis).
+* Updated Term Merge to [1.2](https://www.drupal.org/node/2406869).
+* Added [UUID 1.0-alpha6](https://www.drupal.org/project/uuid).
+* Added [View Unpublished 1.2](https://www.drupal.org/project/view_unpublished).
+* Updated Views Accordion to [1.1](https://www.drupal.org/node/2416539).
+* Updated Webform to [3.23](https://www.drupal.org/node/2454059) (see also [3.22](https://www.drupal.org/node/2445295)).
+* Added [Webform Conditional 1.0-beta2](https://www.drupal.org/project/webform_conditional).
+* Updated Workbench Moderation to [1.4](https://www.drupal.org/node/2428047).
+* Patched the Body Field Definition feature with the fix for issue [#2454593](https://www.drupal.org/node/2454593).
+* Patched the Questions and Answer feature with the fix for issue [#9](https://github.com/misd-service-development/drupal-feature-questions-and-answers/pull/9).
+* Added [Disqus 1.10](https://www.drupal.org/project/disqus).
+* Added [Imagecache External 2.0](https://www.drupal.org/project/imagecache_external).
+
+7.x-1.3
+-------
+
+13 January 2015.
+
+* Set date formats to UK style.
+* Fix menu block configuration for the Cambridge theme.
+* Updated the Cambridge theme to [1.3](https://github.com/misd-service-development/drupal-cambridge-theme/releases/tag/7.x-1.3).
+* Updated Chaos Tools to [1.5](https://drupal.org/node/2378333).
+* Updated Features to [2.3](https://drupal.org/node/2402173).
+* Updated Link to [1.3](https://drupal.org/node/2361091).
+* Updated Raven to [1.3](https://github.com/misd-service-development/drupal-raven/releases/tag/7.x-1.3).
+* Patched the Raven module with the fix for issue [#42](https://github.com/misd-service-development/drupal-raven/pull/42).
+* Updated Administration menu to [3.0-rc5](https://www.drupal.org/node/2396363).
+* Added [Block Title Link 1.3](https://www.drupal.org/project/block_titlelink).
+* Updated CKEditor to [1.16](https://www.drupal.org/node/2356563).
+* Updated CKEditor library to [4.4.6](http://ckeditor.com/release/CKEditor-4.4.6) (see also [4.4.5](http://ckeditor.com/release/CKEditor-4.4.5)).
+* Updated Context to [3.6](https://www.drupal.org/node/2403351) (see also [3.3](https://www.drupal.org/node/2347919), [3.4](https://www.drupal.org/node/2391965) and [3.5](https://www.drupal.org/node/2392055)).
+* Added [Facet API 1.5](https://www.drupal.org/project/facetapi).
+* Updated fancyBox to [2.0-beta4](https://www.drupal.org/node/2398369).
+* Patched the Feeds module with the fixes for issues [#661606](https://www.drupal.org/node/661606), [#1080386](https://www.drupal.org/node/1080386) and [#1981504](https://www.drupal.org/node/1981504).
+* Updated Feeds XPath Parser to [1.0](https://www.drupal.org/node/2391093).
+* Updated Field Collection to [1.0-beta8](https://www.drupal.org/node/2369003).
+* Added [FileField Sources 1.9](https://www.drupal.org/project/filefield_sources).
+* Updated ImageAPI Optimize to [1.2](https://www.drupal.org/node/2366739) (see also [1.1](https://www.drupal.org/node/2366735)).
+* Added [Markup 1.1-beta1](https://www.drupal.org/project/markup).
+* Added [Media: Flickr 1.0-alpha4](https://www.drupal.org/project/media_flickr).
+* Added [Media: SoundCloud 1.0](https://www.drupal.org/project/media_soundcloud).
+* Added [Media: Vimeo 1.0-beta5](https://www.drupal.org/project/media_vimeo).
+* Added [Media: YouTube 1.0-beta3](https://www.drupal.org/project/media_youtube).
+* Updated Memcache to [1.4](https://www.drupal.org/node/2403109) (see also [1.3](https://www.drupal.org/node/2367379)).
+* Updated Metatag to [1.4](https://www.drupal.org/node/2353917) (see also [1.0](https://www.drupal.org/node/2340229), [1.1](https://www.drupal.org/node/2341013), [1.2](https://www.drupal.org/node/2350757) and [1.3](https://www.drupal.org/node/2352439)).
+* Added [Persistent Menu Items 1.0](https://www.drupal.org/project/persistent_menu_items).
+* Added [Publish Content 1.3](https://www.drupal.org/project/publishcontent).
+* Updated Scheduler to [1.3](https://www.drupal.org/node/2373369).
+* Added [Search API 1.14](https://www.drupal.org/project/search_api).
+* Added [Search API Database Search 1.4](https://www.drupal.org/project/search_api_db).
+* Added [Select (or other) 2.20](https://www.drupal.org/project/select_or_other).
+* Added [Similar By Terms 2.3](https://www.drupal.org/project/similarterms).
+* Added [Synonyms 1.2](https://www.drupal.org/project/synonyms).
+* Added [Term Merge 1.1](https://www.drupal.org/project/term_merge).
+* Added [Twitter Block 2.2](https://www.drupal.org/project/twitter_block).
+* Patched the Varnish module with the fix for issue [#2371907](https://www.drupal.org/node/2371907).
+* Added [Views RSS 2.0-rc4](https://www.drupal.org/project/views_rss).
+* Updated Webform to [3.21](https://www.drupal.org/node/2351977).
+* Patched the News feature with the fix for issue [#5](https://github.com/misd-service-development/drupal-feature-news/pull/5).
+* Disabled node previews on new sites.
+* Added [Menu View Unpublished 1.0-beta3](https://www.drupal.org/project/menu_view_unpublished).
+
 7.x-1.2
 -------
 

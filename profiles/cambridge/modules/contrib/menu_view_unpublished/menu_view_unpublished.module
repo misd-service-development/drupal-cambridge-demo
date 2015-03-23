@@ -1,0 +1,54 @@
+<?php
+
+/**
+ * Implements hook_permission().
+ */
+function menu_view_unpublished_permission() {
+  return array(
+    'menu view unpublished' => array(
+      'title' => t('View menu links to unpublished but accessible content'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_query_TAG_alter().
+ *
+ * @see menu_tree_check_access()
+ *   Contains the query being altered here. This is most likely the only query
+ *   with tag node_access where the first condition is for the node.status column.
+ */
+function menu_view_unpublished_query_node_access_alter(QueryAlterableInterface $query) {
+  if (user_access('menu view unpublished')) {
+    $c = &$query->conditions();
+    // Remove the status condition if we suspect this query originates from
+    // menu_tree_check_access().
+    if (count($c) == 3 &&
+      is_string($c[0]['field']) && $c[0]['field'] == 'n.status' &&
+      is_string($c[1]['field']) && $c[1]['field'] == 'n.nid' && $c[1]['operator'] == 'IN') {
+      unset($c[0]);
+    }
+  }
+}
+
+/**
+ * Implements hook_menu_link_alter().
+ */
+function menu_view_unpublished_menu_link_alter(&$item) {
+  // Add a class to menu links that link to unpublished nodes.
+  if (preg_match('@^node/(\d+)$@', $item['link_path'], $matches)) {
+    $node = node_load((int) $matches[1]);
+    if ($node && $node->status == NODE_NOT_PUBLISHED) {
+      // There appear to be some inconsistency in that sometimes the classes come
+      // through as an array and sometimes as a string.
+      if (empty($item['options']['attributes']['class'])){
+        $item['options']['attributes']['class'] = array();
+      }
+      elseif (is_string($item['options']['attributes']['class'])) {
+        $item['options']['attributes']['class'] = explode(' ', $item['options']['attributes']['class']);
+      }
+      
+      $item['options']['attributes']['class'][] = 'menu-node-unpublished';
+    }
+  }
+}

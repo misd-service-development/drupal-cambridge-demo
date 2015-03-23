@@ -1,0 +1,161 @@
+<?php
+/**
+ * @file
+ * Allows menu links to be visible irrespective of content restriction.
+ *
+ * Adds a checkbox to all node add/edit forms for content that has a menu.
+ * Checking the box will cause the check on menu visibility to be
+ * skipped - thus menu items for restricted content are still visible
+ * for anonymous users.
+ *
+ * Also adds a checkbox to all menu items add/edit forms so this can be applied to other types of pages, not just nodes.
+ *
+ * Concept originally based on http://drupal.org/node/300607#comment-2805992 and the
+ * always visible module.
+ */
+
+
+/**
+ * Implements hook_menu();
+ */
+function persistent_menu_items_menu() {
+  $items = array();
+
+  $items['admin/config/user-interface/persistent-menu-items'] = array(
+    'title' => 'Persistent menu items',
+    'description' => 'Settings to configure default settings for Persistent menu items',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('persistent_menu_items_settings_form'),
+    'access arguments' => array('administer persistent menu items'),
+    'file' => 'persistent_menu_items.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Instance of hook _permission().
+ * @return array
+ */
+function persistent_menu_items_permission() {
+  return array(
+    'administer persistent menu items' => array(
+      'title' => t('Administer persistent menu items'),
+      'description' => t('Control whether selected menu items are always visible regardless of access restrictions on the content of the page in question.'),
+      'restrict access' => TRUE,
+    ),
+  );
+}
+
+/**
+ * Instance of hook _form_menu_edit_item_alter().
+ * Alters the menu item add/edit form to add the "persistent menu item" checkbox if the person viewing the form
+ * has sufficient permissions set.
+ */
+function persistent_menu_items_form_menu_edit_item_alter(&$form, &$form_state) {
+
+  //Does the current user have permission to set the persistent menu flag on this menu item?
+  if (user_access('administer persistent menu items')) {
+
+    if (isset($form['mlid']['#value'])) {
+      $query_result = db_query('SELECT options FROM {menu_links} WHERE mlid = :mlid', array(':mlid' => $form['mlid']['#value']))->fetchField();
+      $options = unserialize($query_result);
+    }
+
+    $form['persistent_menu_item'] = array(
+      '#title' => t('Always show this menu link.'),
+      '#description' => t('Make the menu link visible irrespective of whether the content is restricted.'),
+      '#type' => 'checkbox',
+      '#weight' => '1',
+      '#default_value' => isset($options['persistent_menu_item']) ? $options['persistent_menu_item'] : variable_get('persistent_menu_items_visible_default', FALSE),
+    );
+
+    array_unshift($form['#submit'], 'persistent_menu_items_form_submit');
+
+  }
+
+}
+
+/**
+ * Instance of hook _form_submit();
+ * Custom additional submit hook for the menu add/edit form, only called if the form is loaded by someone with
+ * permission to administer the persistent menu item option. Handles the saving of the persistent menu flag against the
+ * menu item's entry in the database.
+ * @param array $form
+ * @param array $form_state
+ */
+function persistent_menu_items_form_submit($form, &$form_state) {
+
+  $menu =& $form_state['values'];
+  if ($menu['persistent_menu_item']) {
+    $menu['options']['persistent_menu_item'] = 1;
+    $menu['options']['alter'] = 1;
+  }
+  else {
+    $menu['options']['persistent_menu_item'] = 0;
+    $menu['options']['alter'] = 0;
+  }
+}
+
+/**
+ * Implements hook_form_node_form_alter().
+ */
+function persistent_menu_items_form_node_form_alter(&$form, &$form_state, $form_id) {
+  //If the user has sufficient permission, add the persistent menu item form element to the node form.
+  if (user_access('administer persistent menu items')) {
+    if (isset($form['menu'])) {
+      $form['menu']['link']['persistent_menu_item'] = array(
+        '#title' => t('Always show this menu link.'),
+        '#description' => t('Make the menu link visible irrespective of whether the content is restricted.'),
+        '#type' => 'checkbox',
+        '#weight' => '0',
+        '#default_value' => isset($form['#node']->menu['options']['persistent_menu_item']) ? $form['#node']->menu['options']['persistent_menu_item'] : variable_get('persistent_menu_items_visible_default', FALSE),
+      );
+      array_unshift($form['#submit'], 'persistent_menu_items_node_form_submit');
+    }
+  }
+
+}
+
+/**
+ * Instance of hook _form_submit();
+ *
+ * Set the required values on the menu array if it exists to allow for a persistent menu item.
+ * @param array $form
+ * @param array $form_state
+ */
+function persistent_menu_items_node_form_submit($form, &$form_state) {
+  $state =& $form_state['values'];
+
+  if ($state['menu']['persistent_menu_item']) {
+    $state['menu']['options']['persistent_menu_item'] = 1;
+    $state['menu']['options']['alter'] = 1;
+  }
+  else {
+    $state['menu']['options']['persistent_menu_item'] = 0;
+    $state['menu']['options']['alter'] = 0;
+  }
+}
+
+/**
+ * Implements hook_translated_menu_link_alter().
+ * This hook will be triggered if the alter property is set in the options attribute on the menu_links entry for
+ * a given menu item.
+ */
+function persistent_menu_items_translated_menu_link_alter(&$item, $map) {
+
+  if (isset($item['options']['persistent_menu_item']) && $item['options']['persistent_menu_item'] == TRUE) {
+
+    $item['access'] = TRUE;
+    $item['title'] = $item['link_title'];
+
+    if (!array_key_exists('localized_options', $item)) {
+      if (array_key_exists('options', $item)) {
+        $item['localized_options'] = $item['options'];
+      }
+      else {
+        $item['localized_options'] = array();
+      }
+    }
+  }
+}

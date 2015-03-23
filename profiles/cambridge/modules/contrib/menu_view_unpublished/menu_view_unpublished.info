@@ -1,0 +1,9 @@
+name = Menu view unpublished
+description = Allows users to see menu links to unpublished nodes.
+core = 7.x
+; Information added by drupal.org packaging script on 2013-03-07
+version = "7.x-1.0-beta3"
+core = "7.x"
+project = "menu_view_unpublished"
+datestamp = "1362663739"
+

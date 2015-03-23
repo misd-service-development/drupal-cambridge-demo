@@ -1,6 +1,17 @@
 Changelog
 =========
 
+7.x-1.3
+-------
+
+23 December 2014.
+
+* Make sure user accounts are saved when logging in, even when blocked.
+* Hide the user login block on the backdoor login page.
+* Add 'is Raven user' Rules condition.
+* Prevent double language prefixing of URLs.
+* Rewrite generated `user/login` paths to `raven/login` when Raven is enforced.
+
 7.x-1.2
 -------
 

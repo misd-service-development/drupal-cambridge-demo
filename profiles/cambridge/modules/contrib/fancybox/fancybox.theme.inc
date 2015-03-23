@@ -90,7 +90,8 @@ function theme_fancybox_image_formatter($variables) {
       $caption = $content_label;
       break;
     case 'custom':
-      $caption = token_replace($settings['fancybox_caption_custom'], array('entity' => $entity, 'node' => node_load($entity->nid)));
+      $caption = token_replace($settings['fancybox_caption_custom'], array($entity_type => $entity, 'file' => (object) $item), array('clear' => TRUE));
+      $caption = htmlspecialchars_decode($caption, ENT_QUOTES);
       break;
   }
 

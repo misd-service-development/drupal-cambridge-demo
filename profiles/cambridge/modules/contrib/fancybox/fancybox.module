@@ -38,8 +38,9 @@ function fancybox_init() {
       libraries_load_files($library);
 
       $settings = _fancybox_filter_settings(variable_get('fancybox_settings'));
+      $context = array('alterable' => &$settings);
 
-      drupal_alter('fancybox_settings', $settings['options'], $settings['helpers']);
+      drupal_alter('fancybox_settings', $settings['options'], $settings['helpers'], $context);
 
       if (isset($settings['options']['padding']) && !is_numeric($settings['options']['padding'])) {
         $settings['options']['padding'] = json_decode($settings['options']['padding']);
@@ -157,7 +158,12 @@ function fancybox_libraries_info() {
   );
 
   if ($settings['options']['mouseWheel']) {
-    $libraries['fancybox']['files']['js'][] = 'lib/jquery.mousewheel-3.0.6.pack.js';
+    if (file_exists(libraries_get_path('fancybox') . '/lib/jquery.mousewheel.pack.js')) {
+      $libraries['fancybox']['files']['js'][] = 'lib/jquery.mousewheel.pack.js';
+    }
+    elseif (file_exists(libraries_get_path('fancybox') . '/lib/jquery.mousewheel-3.0.6.pack.js')) {
+      $libraries['fancybox']['files']['js'][] = 'lib/jquery.mousewheel-3.0.6.pack.js';
+    }
   }
 
   if ($settings['helpers']['thumbs_enabled']) {
@@ -309,7 +315,7 @@ function fancybox_field_formatter_settings_form($field, $instance, $view_mode, $
 
   $element['fancybox_caption_custom_tokens_container']['fancybox_caption_custom_tokens'] = array(
     '#theme' => 'token_tree',
-    '#token_types' => array('node'),
+    '#token_types' => array($instance['entity_type'], 'file'),
   );
 
   return $element;
@@ -358,7 +364,7 @@ function fancybox_field_formatter_settings_summary($field, $instance, $view_mode
  * Return an array of available grouping options.
  */
 function fancybox_field_formatter_grouping_options() {
-  return array(
+  $grouping = array(
     'none' => t('<none>'),
     'post' => t('Per post gallery'),
     'page' => t('Per page gallery'),
@@ -366,6 +372,10 @@ function fancybox_field_formatter_grouping_options() {
     'field_page' => t('Per field in page gallery'),
     'custom' => t('Custom'),
   );
+
+  drupal_alter('fancybox_grouping_options', $grouping);
+
+  return $grouping;
 }
 
 /**
@@ -388,9 +398,7 @@ function fancybox_field_formatter_caption_options() {
  * @see fancybox_field_formatter_settings_form().
  */
 function fancybox_gallery_custom_validate($element, &$form_state, $form) {
-  $field_name = $element['#array_parents'][1];
-
-  if ($form_state['values']['fields'][$field_name]['settings_edit_form']['settings']['fancybox_gallery'] == 'custom' && !preg_match('/^[A-Za-z]+[A-Za-z0-9-_]*$/', $element['#value'])) {
+  if ($element['#value'] && !preg_match('/^[A-Za-z]+[A-Za-z0-9-_]*$/', $element['#value'])) {
     form_error($element, t('The custom grouping value must only contain letters, numbers, hyphens and underscores and it must begin with a letter.'));
   }
 }
@@ -463,6 +471,7 @@ function _fancybox_defaults() {
       'playSpeed' => 3000,
       'preload' => 3,
       'modal' => 0,
+      'loop' => 1,
       'openEffect' => 'fade',
       'closeEffect' => 'fade',
       'nextEffect' => 'elastic',
@@ -639,6 +648,43 @@ function _fancybox_array_diff_assoc_recursive($array1, $array2) {
   }
 
   return $return;
+}
+
+function _fancybox_array_replace_recursive($array, $array1) {
+  if (function_exists('array_replace_recursive')) {
+    return array_replace_recursive($array, $array1);
+  }
+
+  function recurse($array, $array1) {
+    foreach ($array1 as $key => $value) {
+      if (!isset($array[$key]) || (isset($array[$key]) && !is_array($array[$key]))) {
+        $array[$key] = array();
+      }
+
+      if (is_array($value)) {
+        $value = recurse($array[$key], $value);
+      }
+
+      $array[$key] = $value;
+    }
+
+    return $array;
+  }
+
+  $args = func_get_args();
+  $array = $args[0];
+
+  if (!is_array($array)) {
+    return $array;
+  }
+
+  for ($i = 1; $i < count($args); $i++) {
+    if (is_array($args[$i])) {
+      $array = recurse($array, $args[$i]);
+    }
+  }
+
+  return $array;
 }
 
 /**

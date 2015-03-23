@@ -1,0 +1,21 @@
+name = Synonyms
+description = "Provides synonyms feature for working with Drupal Taxonomy"
+package = Taxonomy
+core = 7.x
+dependencies[] = taxonomy
+dependencies[] = text
+
+files[] = synonyms.test
+files[] = includes/AbstractSynonymsExtractor.class.inc
+files[] = includes/SynonymsSynonymsExtractor.class.inc
+files[] = includes/TaxonomySynonymsExtractor.class.inc
+files[] = includes/EntityReferenceSynonymsExtractor.class.inc
+files[] = views/synonyms.views.inc
+files[] = views/synonyms_views_plugin_argument_validate_taxonomy_term.inc
+
+; Information added by Drupal.org packaging script on 2014-09-15
+version = "7.x-1.2"
+core = "7.x"
+project = "synonyms"
+datestamp = "1410753528"
+

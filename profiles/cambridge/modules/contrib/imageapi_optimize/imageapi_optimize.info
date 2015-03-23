@@ -1,12 +1,10 @@
 name = ImageAPI Optimize
 description = An optimized version Image Toolkits
 core = 7.x
-files[] = imageapi_optimize.install
-files[] = imageapi_optimize.module
 
-; Information added by drupal.org packaging script on 2012-11-01
-version = "7.x-1.0"
+; Information added by Drupal.org packaging script on 2014-10-31
+version = "7.x-1.2"
 core = "7.x"
 project = "imageapi_optimize"
-datestamp = "1351775225"
+datestamp = "1414735130"
 

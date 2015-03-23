@@ -12,16 +12,9 @@ function cambridge_image_styles_image_default_styles() {
 
   // Exported image style: carousel.
   $styles['carousel'] = array(
-    'name' => 'carousel',
     'label' => 'Carousel',
     'effects' => array(
       7 => array(
-        'label' => 'Javascript crop',
-        'help' => 'Create a crop with a javascript toolbox.',
-        'effect callback' => 'imagecrop_effect',
-        'form callback' => 'imagecrop_effect_form',
-        'summary theme' => 'imagecrop_effect_summary',
-        'module' => 'imagecrop',
         'name' => 'imagecrop_javascript',
         'data' => array(
           'width' => 885,
@@ -40,16 +33,9 @@ function cambridge_image_styles_image_default_styles() {
 
   // Exported image style: inline.
   $styles['inline'] = array(
-    'name' => 'inline',
     'label' => 'Inline/teaser',
     'effects' => array(
       9 => array(
-        'label' => 'Javascript crop',
-        'help' => 'Create a crop with a javascript toolbox.',
-        'effect callback' => 'imagecrop_effect',
-        'form callback' => 'imagecrop_effect_form',
-        'summary theme' => 'imagecrop_effect_summary',
-        'module' => 'imagecrop',
         'name' => 'imagecrop_javascript',
         'data' => array(
           'width' => 250,
@@ -68,16 +54,9 @@ function cambridge_image_styles_image_default_styles() {
 
   // Exported image style: leading.
   $styles['leading'] = array(
-    'name' => 'leading',
     'label' => 'Leading',
     'effects' => array(
       8 => array(
-        'label' => 'Javascript crop',
-        'help' => 'Create a crop with a javascript toolbox.',
-        'effect callback' => 'imagecrop_effect',
-        'form callback' => 'imagecrop_effect_form',
-        'summary theme' => 'imagecrop_effect_summary',
-        'module' => 'imagecrop',
         'name' => 'imagecrop_javascript',
         'data' => array(
           'width' => 590,
@@ -96,16 +75,9 @@ function cambridge_image_styles_image_default_styles() {
 
   // Exported image style: sidebar_teaser.
   $styles['sidebar_teaser'] = array(
-    'name' => 'sidebar_teaser',
     'label' => 'Sidebar Teaser',
     'effects' => array(
       10 => array(
-        'label' => 'Javascript crop',
-        'help' => 'Create a crop with a javascript toolbox.',
-        'effect callback' => 'imagecrop_effect',
-        'form callback' => 'imagecrop_effect_form',
-        'summary theme' => 'imagecrop_effect_summary',
-        'module' => 'imagecrop',
         'name' => 'imagecrop_javascript',
         'data' => array(
           'width' => 349,
@@ -124,16 +96,9 @@ function cambridge_image_styles_image_default_styles() {
 
   // Exported image style: small.
   $styles['small'] = array(
-    'name' => 'small',
     'label' => 'Small',
     'effects' => array(
       1 => array(
-        'label' => 'Javascript crop',
-        'help' => 'Create a crop with a javascript toolbox.',
-        'effect callback' => 'imagecrop_effect',
-        'form callback' => 'imagecrop_effect_form',
-        'summary theme' => 'imagecrop_effect_summary',
-        'module' => 'imagecrop',
         'name' => 'imagecrop_javascript',
         'data' => array(
           'width' => 153,

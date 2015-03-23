@@ -273,21 +273,68 @@ function cambridge_theme_form_views_exposed_form_alter(&$form) {
 function cambridge_theme_menu_block_tree_alter(&$tree, &$config) {
   $block = _cambridge_theme_block_load('menu_block', $config['delta']);
 
+  // If the block is enabled by Context, the region won't currently be set.
+  if (BLOCK_REGION_NONE == $block->region && module_exists('context')) {
+    if ($plugin = context_get_plugin('reaction', 'block')) {
+      foreach (array('left_navigation', 'horizontal_navigation') as $region) {
+        $context_blocks = $plugin->block_list($region);
+
+        $key = sprintf('%s-%s', 'menu_block', $config['delta']);
+
+        if (isset($context_blocks[$key])) {
+          $block->region = $context_blocks[$key]->region;
+        }
+      }
+    }
+  }
+
   if ('left_navigation' === $block->region) {
     // Force menu block configuration.
     $config['level'] = 1;
     $config['follow'] = 0;
     $config['depth'] = 0;
-    $config['expanded'] = 1;
     $config['sort'] = 1;
+
+    if (0 == $config['expanded']) {
+      // As the menu will break if it's not expanded, we'll have to reload it again.
+      $config['expanded'] = 1;
+
+      // Get the full, un-pruned tree.
+      if ($config['parent_mlid']) {
+        $tree = menu_tree_all_data($config['menu_name']);
+      }
+      else {
+        $max_depth = ($config['depth'] == 0) ? NULL : min($config['level'] + $config['depth'] - 1, MENU_MAX_DEPTH);
+
+        $tree = menu_tree_all_data($config['menu_name'], NULL, $max_depth);
+      }
+      // And add the active trail data back to the full tree.
+      menu_tree_add_active_path($tree);
+    }
   }
   elseif ('horizontal_navigation' === $block->region) {
     // Force menu block configuration.
     $config['level'] = 1;
     $config['follow'] = 0;
     $config['depth'] = 0;
-    $config['expanded'] = 1;
     $config['sort'] = 0;
+
+    if (0 == $config['expanded']) {
+      // As the menu will break if it's not expanded, we'll have to reload it again.
+      $config['expanded'] = 1;
+
+      // Get the full, un-pruned tree.
+      if ($config['parent_mlid']) {
+        $tree = menu_tree_all_data($config['menu_name']);
+      }
+      else {
+        $max_depth = ($config['depth'] == 0) ? NULL : min($config['level'] + $config['depth'] - 1, MENU_MAX_DEPTH);
+
+        $tree = menu_tree_all_data($config['menu_name'], NULL, $max_depth);
+      }
+      // And add the active trail data back to the full tree.
+      menu_tree_add_active_path($tree);
+    }
 
     // We need to add in extra 'Overview' menu items as parents aren't clickable/tapable, but there isn't a way to do
     // this with arrays as it can have any number of levels. So they need to be turned into ArrayObjects and back again.
@@ -509,18 +556,8 @@ function cambridge_theme_block_view_alter(&$data, $block) {
           continue;
         }
         if ($sibling['#title'] == 'Home') {
-          $title = variable_get('site_name');
-
-          if (module_exists('context')) {
-            foreach (context_active_contexts() as $context) {
-              if (!empty($context->reactions['theme']['title'])) {
-                $title = $context->reactions['theme']['title'];
-              }
-            }
-          }
-
           $breadcrumbs = array($key => $siblings[$key]) + $breadcrumbs;
-          $breadcrumbs[$key]['#title'] = $title;
+          $breadcrumbs[$key]['#title'] = variable_get('site_name');
         }
       }
 
@@ -548,20 +585,8 @@ function cambridge_theme_block_view_alter(&$data, $block) {
           continue;
         }
         if ($sibling['#title'] == 'Home') {
-          $title = variable_get('site_name');
-
-          // Use the context module's section title if enabled/used.
-
-          if (module_exists('context')) {
-            foreach (context_active_contexts() as $context) {
-              if (!empty($context->reactions['theme']['title'])) {
-                $title = $context->reactions['theme']['title'];
-              }
-            }
-          }
-
           $breadcrumbs = array($key => $active['_siblings'][$key]->getArrayCopy()) + $breadcrumbs;
-          $breadcrumbs[$key]['#title'] = $title;
+          $breadcrumbs[$key]['#title'] = variable_get('site_name');
         }
       }
 

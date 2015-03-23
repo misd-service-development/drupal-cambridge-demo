@@ -60,7 +60,7 @@ function varnish_menu() {
 function varnish_theme() {
   return array(
     'varnish_status' => array(
-      'arguments' => array('status' => array(), 'version' => 2.1),
+      'variables' => array('status' => array(), 'version' => 2.1),
     )
   );
 }
@@ -217,13 +217,14 @@ function varnish_get_status() {
 /**
  * Theme handler for theme('varnish_status').
  */
-function theme_varnish_status($status) {
+function theme_varnish_status($variables) {
   $items = array();
+  $status = $variables['status'];
   foreach ($status as $terminal => $state) {
     list($server, $port) = explode(':', $terminal);
     if ($state == VARNISH_SERVER_STATUS_UP) {
       $icon = theme('image', array('path' => 'misc/watchdog-ok.png', 'alt' => t("Server OK: @server:@port", array('@server' => $server, '@port' => $port)), 'title' => "{$server}:{$port}"));
-      $version = floatval(variable_get('varnish_version', 2.1));
+      $version = $variables['version'];
       if ($version < 3) {
         $items[] = t('!status_icon Varnish running. Observe more detailed statistics !link.',
                 array('!status_icon' => $icon, '!link' => l(t('here'), 'admin/reports/varnish')));

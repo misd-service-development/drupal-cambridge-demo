@@ -230,8 +230,7 @@ function field_collection_update_7002() {
     $ids = $select->execute()->fetchCol(0);
 
     entity_delete_multiple('field_collection_item', $ids);
-    $count = count($ids);
-    drupal_set_message("Deleted $count orphaned field collection items.");
+    drupal_set_message(t('Deleted @count orphaned field collection items.', array('@count' => count($ids))));
   }
 }
 

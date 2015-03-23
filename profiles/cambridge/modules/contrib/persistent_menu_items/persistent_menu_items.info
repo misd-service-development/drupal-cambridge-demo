@@ -1,0 +1,18 @@
+name = Persistent Menu Items
+description = Allows menu items to be always visible in site navigation regardless of access control restrictions to the menu item's destination URL.
+package = Site Navigation
+
+core = 7.x
+
+dependencies[] = menu
+
+files[] = persistent_menu_items.install
+
+version = "7.x-1.0"
+
+; Information added by Drupal.org packaging script on 2014-01-22
+version = "7.x-1.0"
+core = "7.x"
+project = "persistent_menu_items"
+datestamp = "1390393419"
+

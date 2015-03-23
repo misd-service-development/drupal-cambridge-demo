@@ -1,0 +1,723 @@
+<?php
+
+/**
+ * @file
+ * Provide synonyms feature for Drupal Taxonomy.
+ */
+
+/**
+ * The default field name to be used as a source of synonyms for a term.
+ */
+define('SYNONYMS_DEFAULT_FIELD_NAME', 'synonyms_synonyms');
+
+/**
+ * Implements hook_menu().
+ */
+function synonyms_menu() {
+  $items = array();
+
+  $items['synonyms/autocomplete/%/%/%'] = array(
+    'title' => 'Autocomplete Synonyms',
+    'page callback' => 'synonyms_autocomplete',
+    'page arguments' => array(2, 3, 4),
+    'access arguments' => array('access content'),
+    'file' => 'synonyms.pages.inc',
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_taxonomy_term_update().
+ */
+function synonyms_taxonomy_term_update($term) {
+  // If we notice at least some change in synonyms of this term, we want to
+  // trigger search re-indexing of nodes, where this term is referenced, since
+  // change in term synonyms affects nodes ranking in the search.
+  if (isset($term->original)) {
+    $current_synonyms = synonyms_get_raw($term);
+    $previous_synonyms = synonyms_get_raw($term->original);
+    if (count($current_synonyms) != count($previous_synonyms)) {
+      // Schedule re-indexing, because amount of synonyms has changed.
+      module_load_include('inc', 'synonyms', 'synonyms.pages');
+      synonyms_reindex_nodes_by_terms(array($term->tid));
+    }
+    else {
+      foreach ($current_synonyms as $k => $current_synonym) {
+        if ($current_synonyms[$k] != $previous_synonyms[$k]) {
+          // Schedule re-indexing, because some synonym has changed.
+          module_load_include('inc', 'synonyms', 'synonyms.pages');
+          synonyms_reindex_nodes_by_terms(array($term->tid));
+          break;
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_entity_property_info().
+ */
+function synonyms_entity_property_info() {
+  $info = array();
+  $properties = &$info['taxonomy_term']['properties'];
+  $properties['synonyms'] = array(
+    'label' => t('Synonyms'),
+    'description' => t('Synonyms of entity.'),
+    'type' => 'list<text>',
+    'getter callback' => 'synonyms_get_sanitized',
+    'computed' => TRUE,
+    'sanitized' => TRUE,
+    'raw getter callback' => 'synonyms_get_raw',
+  );
+  return $info;
+}
+
+/**
+ * Implements hook_node_update_index().
+ */
+function synonyms_node_update_index($node) {
+  $output = '';
+  foreach (field_info_instances('node', $node->type) as $instance) {
+    // We go a field by field looking for taxonomy term reference and
+    // if that vocabulary has enabled synonyms, we add term's synonyms
+    // to the search index.
+    $field_info = field_info_field($instance['field_name']);
+    if ($field_info['type'] == 'taxonomy_term_reference') {
+      // For each term referenced in this node we have to add synonyms.
+      $_terms = field_get_items('node', $node, $instance['field_name']);
+      if (is_array($_terms) && !empty($_terms)) {
+        $terms = array();
+        foreach ($_terms as $v) {
+          $terms[] = $v['tid'];
+        }
+        $terms = taxonomy_term_load_multiple($terms);
+        foreach ($terms as $term) {
+          $synonyms = synonyms_get_sanitized($term);
+          if (!empty($synonyms)) {
+            $output .= '<strong>' . implode(', ', $synonyms) . '</strong>';
+          }
+        }
+      }
+    }
+  }
+  return $output;
+}
+
+/**
+ * Implements hook_synonyms_extractor_info().
+ */
+function synonyms_synonyms_extractor_info() {
+  // Here we provide synonyms extractors that come along with Synonyms module.
+  return array(
+    'SynonymsSynonymsExtractor',
+    'TaxonomySynonymsExtractor',
+    'EntityReferenceSynonymsExtractor',
+  );
+}
+
+/**
+ * Public function.
+ *
+ * Provide info about what class reports ability to extract synonyms from
+ * which field type. The output information of this function is collected via
+ * hook_synonyms_extractor_info().
+ *
+ * @param string $field_type
+ *   Optionally you may specify to get a class responsible for a specific field
+ *   type only. If nothing is supplied, array of field_type => class_extractor
+ *   relation is returned
+ * @param bool $reset
+ *   Whether collect all the info again from hooks, or cached info is fine
+ *
+ * @return array
+ *   Key of this array denotes the field type while value of the array denotes
+ *   which class reports ability to extract synonyms from such field type.
+ */
+function synonyms_extractor_info($field_type = NULL, $reset = FALSE) {
+  $cache = &drupal_static(__FUNCTION__);
+
+  // Trying static cache.
+  if (!is_array($cache) || $reset) {
+    // Trying Drupal DB cache layer.
+    $cid = 'synonyms_extractor_info';
+    $cache = cache_get($cid);
+    if (!isset($cache->data) || $reset) {
+      // No cache has been found at all. So we call hooks and collect data.
+      $info = array();
+
+      $extractor_classes = module_invoke_all('synonyms_extractor_info');
+
+      if (is_array($extractor_classes)) {
+        foreach ($extractor_classes as $class) {
+          foreach (call_user_func(array($class, 'fieldTypesSupported')) as $_field_type) {
+            $info[$_field_type] = $class;
+          }
+        }
+      }
+
+      // Letting whoever wants to implement any changes after preprocessing the
+      // data.
+      drupal_alter('synonyms_extractor_info', $info);
+
+      $cache = $info;
+      cache_set($cid, $cache, 'cache', CACHE_TEMPORARY);
+    }
+    else {
+      $cache = $cache->data;
+    }
+  }
+
+  if (!is_null($field_type) && isset($cache[$field_type])) {
+    return $cache[$field_type];
+  }
+
+  return $cache;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function synonyms_form_taxonomy_form_vocabulary_alter(&$form, &$form_state) {
+  if (isset($form_state['confirm_delete']) && $form_state['confirm_delete']) {
+    return;
+  }
+
+  module_load_include('inc', 'synonyms', 'synonyms.pages');
+
+  $form['synonyms'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Synonyms'),
+    '#collapsible' => TRUE,
+    '#tree' => TRUE,
+  );
+
+  $options = array(
+    SYNONYMS_DEFAULT_FIELD_NAME => t('Default synonyms field'),
+  );
+  if (isset($form['#vocabulary']->vid)) {
+    $instances = synonyms_instances_extract_applicable($form['#vocabulary']);
+    foreach ($instances as $instance) {
+      // Here we prefer some informative text for the default synonyms field
+      // rather its label.
+      if ($instance['field_name'] != SYNONYMS_DEFAULT_FIELD_NAME) {
+        $options[$instance['field_name']] = $instance['label'];
+      }
+    }
+  }
+
+  $form['synonyms']['synonyms'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Synonyms Fields'),
+    '#options' => $options,
+    '#description' => t('<p>This option allows you to assign synonym fields for each term of the vocabulary, allowing to reduce the amount of duplicates.</p><p><b>Important note:</b> unticking %default_field on a production website will result in loss of your synonyms.</p>', array('%default_field' => $options[SYNONYMS_DEFAULT_FIELD_NAME])),
+    '#default_value' => synonyms_synonyms_fields($form['#vocabulary']),
+  );
+
+  // Adding our own submit handler.
+  $form['#submit'][] = 'synonyms_taxonomy_form_vocabulary_submit';
+}
+
+/**
+ * Implements hook_field_widget_info().
+ */
+function synonyms_field_widget_info() {
+  return array(
+    'synonyms_autocomplete' => array(
+      'label' => t('Synonyms friendly autocomplete term widget'),
+      'field types' => array('taxonomy_term_reference'),
+      'settings' => array(
+        'size' => 60,
+        'autocomplete_path' => 'synonyms/autocomplete',
+        'suggestion_size' => 10,
+        'suggest_only_unique' => FALSE,
+        'auto_creation' => 1,
+      ),
+      'behaviors' => array(
+        'multiple values' => FIELD_BEHAVIOR_CUSTOM,
+      ),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_widget_settings_form().
+ */
+function synonyms_field_widget_settings_form($field, $instance) {
+  $widget = $instance['widget'];
+  $settings = $widget['settings'];
+
+  $form = array();
+
+  $form['auto_creation'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Allow auto-creation?'),
+    '#description' => t('Whether users may create a new term by typing in a non-existing name into this field.'),
+    '#default_value' => $settings['auto_creation'],
+  );
+
+  $form['suggestion_size'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Suggestions Size'),
+    '#description' => t('Please, enter how many suggested entities to show in the autocomplete textfield.'),
+    '#required' => TRUE,
+    '#element_validate' => array('element_validate_integer_positive'),
+    '#default_value' => $settings['suggestion_size'],
+  );
+
+  $form['suggest_only_unique'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Suggest only one entry per term'),
+    '#description' => t('If you want to include only term name or a single synonym, suggesting a particular term, while disregarding all ongoing ones, please, tick this checkbox on.'),
+    '#default_value' => $settings['suggest_only_unique'],
+  );
+
+  return $form;
+}
+
+/**
+ * Implements hook_field_widget_form().
+ */
+function synonyms_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  $tags = array();
+  foreach ($items as $item) {
+    $tags[$item['tid']] = isset($item['taxonomy_term']) ? $item['taxonomy_term'] : taxonomy_term_load($item['tid']);
+  }
+
+  $element += array(
+    '#type' => 'textfield',
+    '#default_value' => taxonomy_implode_tags($tags),
+    '#autocomplete_path' => $instance['widget']['settings']['autocomplete_path'] . '/' . $field['field_name'] . '/' . $instance['entity_type'] . '/' . $instance['bundle'],
+    '#size' => $instance['widget']['settings']['size'],
+    '#maxlength' => 1024,
+    '#element_validate' => array('taxonomy_autocomplete_validate', 'synonyms_autocomplete_validate'),
+    '#auto_creation' => $instance['widget']['settings']['auto_creation'],
+  );
+
+  return $element;
+}
+
+/**
+ * Implements hook_field_widget_error().
+ */
+function synonyms_field_widget_error($element, $error, $form, &$form_state) {
+  form_error($element, $error['message']);
+}
+
+/**
+ * Form element validate handler.
+ *
+ * Handle validation for taxonomy term synonym-friendly autocomplete element.
+ */
+function synonyms_autocomplete_validate($element, &$form_state) {
+  // After taxonomy_autocomplete_validate() has finished its job any terms it
+  // didn't find have been set for autocreation. We need to:
+  // (a) Double-check that those terms are not synonyms.
+  // (b) Check that synonyms' configurable auto-creation option is enabled.
+  $value = drupal_array_get_nested_value($form_state['values'], $element['#parents']);
+  foreach ($value as $delta => $term) {
+    if ($term['tid'] == 'autocreate') {
+      $vocabulary = taxonomy_vocabulary_load($term['vid']);
+      $synonym_tid = synonyms_get_term_by_synonym($term['name'], $vocabulary);
+      if ($synonym_tid != 0) {
+        $value[$delta]['tid'] = $synonym_tid;
+      }
+      elseif (empty($element['#auto_creation'])) {
+        unset($value[$delta]);
+      }
+    }
+  }
+  $value = array_values($value);
+  form_set_value($element, $value, $form_state);
+}
+
+/**
+ * Try to find a term by its name or synonym.
+ *
+ * To maximize the match trimming and case-insensitive comparison is used.
+ *
+ * @param string $name
+ *   The string to be searched for its {taxonomy_term_data}.tid
+ * @param object $vocabulary
+ *   Fully loaded vocabulary object in which you wish to search
+ * @param int $parent
+ *   Optional. In case you want to narrow your search scope, this parameter
+ *   takes in the {taxonomy_term_data}.tid of the parent term, letting you
+ *   search only among its children
+ *
+ * @return int
+ *   If the look up was successful returns the {taxonomy_term_data}.tid of the
+ *   found term, otherwise returns 0
+ */
+function synonyms_get_term_by_synonym($name, $vocabulary, $parent = 0) {
+  $name = mb_strtoupper(trim($name), 'UTF-8');
+
+  $tree = taxonomy_get_tree($vocabulary->vid, $parent, NULL, TRUE);
+  foreach ($tree as $term) {
+    if (mb_strtoupper($term->name, 'UTF-8') == $name) {
+      return $term->tid;
+    }
+
+    // We additionally scan through the synonyms.
+    $synonyms = synonyms_get_sanitized($term);
+    foreach ($synonyms as $item) {
+      if (mb_strtoupper($item, 'UTF-8') == $name) {
+        return $term->tid;
+      }
+    }
+  }
+
+  // If we have reached down here, this means we haven't got any match
+  // as fallback we return 0.
+  return 0;
+}
+
+/**
+ * Look up a term considering synonyms and if nothing found add one.
+ *
+ * This function is useful for automated creation of new terms as it won't
+ * generate the same terms over and over again.
+ *
+ * @param string $name
+ *   The string to be searched for its {taxonomy_term_data}.tid
+ * @param object $vocabulary
+ *   Fully loaded vocabulary object in which you wish to search
+ * @param int $parent
+ *   Optional. In case you want to narrow your search scope, this parameter
+ *   takes in the {taxonomy_term_data}.tid of the parent term, letting you
+ *   search only among its children
+ *
+ * @return int
+ *   If a term already exists, its {taxonomy_term_data}.tid is returned,
+ *   otherwise it creates a new term and returns its {taxonomy_term_data}.tid
+ */
+function synonyms_add_term_by_synonym($name, $vocabulary, $parent = 0) {
+  $tid = synonyms_get_term_by_synonym($name, $vocabulary, $parent);
+  if ($tid) {
+    // We found some term, returning its tid.
+    return $tid;
+  }
+
+  // We haven't found any term, so we create one.
+  $term = (object) array(
+    'name' => $name,
+    'vid' => $vocabulary->vid,
+    'parent' => array($parent),
+  );
+  taxonomy_term_save($term);
+
+  if (isset($term->tid)) {
+    return $term->tid;
+  }
+
+  // Normally we shouldn't reach up to here, because a term would have got
+  // created and the just created tid would have been returned. Nevertheless,
+  // as a fallback in case of any error we return 0.
+  return 0;
+}
+
+/**
+ * Retrieve a list of sanitized synonyms of a taxonomy term.
+ *
+ * @param $item object
+ *   Fully loaded taxonomy term
+ *
+ * @return array
+ *   List of sanitized synonyms of a taxonomy term
+ */
+function synonyms_get_sanitized($item) {
+  $synonyms = array();
+  foreach (synonyms_get_term_synonyms($item) as $synonym) {
+    $synonyms[] = $synonym['safe_value'];
+  }
+  return $synonyms;
+}
+
+/**
+ * Retrieve a list of raw synonyms of a taxonomy term.
+ *
+ * @param $item object
+ *   Fully loaded taxonomy term
+ *
+ * @return array
+ *   List of raw synonyms of a taxonomy term
+ */
+function synonyms_get_raw($item) {
+  $synonyms = array();
+  foreach (synonyms_get_term_synonyms($item) as $synonym) {
+    $synonyms[] = $synonym['value'];
+  }
+  return $synonyms;
+}
+
+/**
+ * Public function for retrieving synonyms of a taxonomy term.
+ *
+ * @param object $term
+ *   Fully loaded taxonomy term for which the synonyms are desired
+ *
+ * @return array
+ *   Array of synonyms, if synonyms are disabled for the taxonomy term's
+ *   vocabulary, an empty array is returned. Each synonym subarray consists of
+ *   the following keys:
+ *   - value: (string) the value of a synonym as it was input by user
+ *   - safe_value: (string) a sanitized value of a synonym
+ */
+function synonyms_get_term_synonyms($term) {
+  $synonyms = array();
+  $vocabulary = taxonomy_vocabulary_load($term->vid);
+  foreach (synonyms_synonyms_fields($vocabulary) as $field) {
+    $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
+    $instance = field_info_instance('taxonomy_term', $field, $bundle);
+    $field = field_info_field($field);
+    $items = field_get_items('taxonomy_term', $term, $field['field_name']);
+
+    if (is_array($items) && !empty($items)) {
+      $class = synonyms_extractor_info($field['type']);
+      foreach (call_user_func(array($class, 'synonymsExtract'), $items, $field, $instance, $term, 'taxonomy_term') as $synonym) {
+        $synonyms[] = array(
+          'value' => $synonym,
+          'safe_value' => check_plain($synonym),
+        );
+      }
+    }
+  }
+
+  return $synonyms;
+}
+
+/**
+ * Allow to merge $synonym_entity as a synonym into $trunk_entity.
+ *
+ * Helpful function during various merging operations. It allows you to add a
+ * synonym (where possible) into one entity, which will represent another entity
+ * in the format expected by the field in which the synonym is being added.
+ * Important note: if the cardinality limit of the field into which you are
+ * adding synonym has been reached, calling to this function will take no
+ * effect.
+ *
+ * @param object $trunk_entity
+ *   Fully loaded entity object in which the synonym is being added
+ * @param string $trunk_entity_type
+ *   Entity type of $trunk_entity
+ * @param string $field
+ *   Field name that should exist in $trunk_entity and be enabled as a synonym
+ *   source. Into this field synonym will be added
+ * @param object $synonym_entity
+ *   Fully loaded entity object which will be added as a synonym
+ * @param string $synonym_entity_type
+ *   Entity type of $synonym_entity
+ *
+ * @return bool
+ *   Whether synonym has been successfully added
+ */
+function synonyms_add_entity_as_synonym($trunk_entity, $trunk_entity_type, $field, $synonym_entity, $synonym_entity_type) {
+  if ($trunk_entity_type != 'taxonomy_term') {
+    // Currently synonyms module only operates on taxonomy terms.
+    return FALSE;
+  }
+  if (!in_array($field, synonyms_synonyms_fields(taxonomy_vocabulary_load($trunk_entity->vid)))) {
+    // $field either doesn't exist in the $trunk_entity or it's not enabled as
+    // a source of synonyms.
+    return FALSE;
+  }
+  // Preparing arguments for calling a method of Extractor class.
+  $field = field_info_field($field);
+  $extractor = synonyms_extractor_info($field['type']);
+  $items = field_get_items($trunk_entity_type, $trunk_entity, $field['field_name']);
+  $items = is_array($items) ? $items : array();
+  $trunk_entity_ids = entity_extract_ids($trunk_entity_type, $trunk_entity);
+  $instance = field_info_instance($trunk_entity_type, $field['field_name'], $trunk_entity_ids[2]);
+
+  $extra_items = call_user_func(array($extractor, 'mergeEntityAsSynonym'), $items, $field, $instance, $synonym_entity, $synonym_entity_type);
+
+  // Merging extracted synonym items into the values of the field that already
+  // exist.
+  // @todo: Currently we hardcode to LANGUAGE_NONE, but in future it would be
+  // nice to have multilanguage support.
+  $items = array_merge($items, $extra_items);
+  $trunk_entity->{$field['field_name']}[LANGUAGE_NONE] = $items;
+  // In future if this module eventually becomes a gateway for synonyms for any
+  // entity types, we'll substitute it with entity_save().
+  taxonomy_term_save($trunk_entity);
+  return TRUE;
+}
+
+/**
+ * Return array of field names that are sources of synonyms.
+ *
+ * Return array of field names that are currently enabled as source of
+ * synonyms in the supplied vocabulary.
+ *
+ * @param object $vocabulary
+ *   Fully loaded taxonomy vocabulary object
+ *
+ * @return array
+ *   Array of field names
+ */
+function synonyms_synonyms_fields($vocabulary) {
+  $settings = synonyms_vocabulary_settings($vocabulary);
+  if (!isset($settings['synonyms']) || !is_array($settings['synonyms'])) {
+    // Weird as normally we expect to see here at least an empty array but
+    // no problem. We simply initialize it.
+    $settings['synonyms'] = array();
+  }
+
+  // It's not just as easy as pulling up already saved value. After this
+  // we have to make sure that all the fields are still present and have not
+  // been deleted from the vocabulary.
+  $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
+  $instances = field_info_instances('taxonomy_term', $bundle);
+  $settings['synonyms'] = array_intersect($settings['synonyms'], array_keys($instances));
+
+  return $settings['synonyms'];
+}
+
+/**
+ * Enforce the setting "synonyms".
+ *
+ * @param object $vocabulary
+ *   Fully loaded entity of a taxonomy vocabulary
+ * @param array $fields
+ *   Array of fields that are enabled as a source of synonyms
+ */
+function synonyms_synonyms_enforce($vocabulary, $fields) {
+  $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
+
+  // Normally all the fields already exist, we just need to assure that
+  // default synonyms field exists if it is enabled as a source of synonyms.
+  // Otherwise we make sure we delete instance of the default field in the
+  // vocabulary.
+  $instance = field_info_instance('taxonomy_term', SYNONYMS_DEFAULT_FIELD_NAME, $bundle);
+  if (in_array(SYNONYMS_DEFAULT_FIELD_NAME, $fields)) {
+    if (is_null($instance)) {
+      // Make sure the field exists.
+      synonyms_default_field_ensure();
+
+      field_create_instance(array(
+        'field_name' => SYNONYMS_DEFAULT_FIELD_NAME,
+        'entity_type' => 'taxonomy_term',
+        'bundle' => $bundle,
+        'label' => t('Synonyms'),
+        'description' => t('Please, enter the synonyms which should be related to this term.'),
+      ));
+    }
+
+  }
+  elseif (!is_null($instance)) {
+    // Deleting the instance, we will delete the field separately when the
+    // module gets uninstalled.
+    field_delete_instance($instance, FALSE);
+  }
+}
+
+/**
+ * Return the current settings for the supplied $vocabulary.
+ *
+ * @param object $vocabulary
+ *   Fully loaded entity of a taxonomy vocabulary
+ *
+ * @return array
+ *   Array of current synonyms settings for the supplied vocabulary.
+ *   Should include the following keys:
+ *   - synonyms: (array) array of field names that are enabled as source of
+ *     synonyms
+ */
+function synonyms_vocabulary_settings($vocabulary) {
+  $settings = array();
+
+  if (isset($vocabulary->vid)) {
+    $settings = variable_get('synonyms_settings_' . $vocabulary->vid, array(
+      'synonyms' => array(),
+    ));
+  }
+
+  return $settings;
+}
+
+/**
+ * Save the current settings for the supplied $vocabulary.
+ *
+ * @param object $vocabulary
+ *   Fully loaded entity of a taxonomy vocabulary
+ * @param array $settings
+ *   Settings the have to be stored. The structure of this array has to be
+ *   identical to the output array of the function
+ *   synonyms_vocabulary_settings()
+ */
+function synonyms_vocabulary_settings_save($vocabulary, $settings) {
+  // If source of synonyms has changed for this vocabulary, we have to trigger
+  // search re-indexing on all the nodes that reference at least 1 term from
+  // this vocabulary.
+  $previous_settings = synonyms_vocabulary_settings($vocabulary);
+  if (implode('', $settings['synonyms']) != implode('', $previous_settings['synonyms'])) {
+    module_load_include('inc', 'synonyms', 'synonyms.pages');
+    synonyms_reindex_nodes_by_vocabulary($vocabulary);
+  }
+
+  variable_set('synonyms_settings_' . $vocabulary->vid, $settings);
+
+  // Now enforcing each setting.
+  foreach ($settings as $k => $v) {
+    switch ($k) {
+      case 'synonyms':
+        synonyms_synonyms_enforce($vocabulary, $v);
+        break;
+    }
+  }
+}
+
+/**
+ * Make sure the default synonyms field exists.
+ *
+ * If the field doesn't exist function creates one, if the field exists,
+ * the function does nothing.
+ */
+function synonyms_default_field_ensure() {
+  $field = field_info_field(SYNONYMS_DEFAULT_FIELD_NAME);
+  if (is_null($field)) {
+    $field = array(
+      'field_name' => SYNONYMS_DEFAULT_FIELD_NAME,
+      'cardinality' => FIELD_CARDINALITY_UNLIMITED,
+      'locked' => TRUE,
+      'type' => 'text',
+    );
+    field_create_field($field);
+  }
+}
+
+/**
+ * Extract instances that are applicable for being source of synonyms.
+ *
+ * Walk through all instances of a vocabulary and extract only valid candidates
+ * for becoming a source of synonyms for the vocabulary terms.
+ *
+ * @param object $vocabulary
+ *   Fully loaded vocabulary object
+ *
+ * @return array
+ *   Array of instance arrays
+ */
+function synonyms_instances_extract_applicable($vocabulary) {
+  $applicable_field_types = array_keys(synonyms_extractor_info());
+  $applicable = array();
+  $bundle = field_extract_bundle('taxonomy_term', $vocabulary);
+  foreach (field_info_instances('taxonomy_term', $bundle) as $instance) {
+    $field = field_info_field($instance['field_name']);
+    if (in_array($field['type'], $applicable_field_types)) {
+      $applicable[] = $instance;
+    }
+  }
+  return $applicable;
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function synonyms_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'synonyms') . '/views',
+  );
+}

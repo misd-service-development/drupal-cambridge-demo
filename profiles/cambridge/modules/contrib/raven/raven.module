@@ -107,7 +107,7 @@ function raven_menu_site_status_alter(&$menu_site_status, $path) {
  *   TRUE if enable, FALSE otherwise
  */
 function raven_backdoor_login_is_enabled() {
-  return (variable_get('raven_login_override', FALSE) == TRUE) * (variable_get('raven_backdoor_login', TRUE) == TRUE);
+  return (bool) ((variable_get('raven_login_override', FALSE) == TRUE) * (variable_get('raven_backdoor_login', TRUE) == TRUE));
 }
 
 /**
@@ -154,7 +154,7 @@ function raven_login($redirect = NULL) {
   $params['ver'] = '3';
   $params['url'] = $base_url . '/';
   $params['desc'] = !empty($website_description) ? $website_description : variable_get('site_name', $base_url);
-  $params['params'] = url($redirect, array('absolute' => TRUE));
+  $params['params'] = url($redirect, array('absolute' => TRUE, 'language' => (object) array('language' => FALSE)));
 
   // Remove any messages (such as 'You need to log in') to stop them appearing on the next page.
   drupal_get_messages();
@@ -305,6 +305,17 @@ function raven_response_status_name($code) {
       return 'Authentication declined';
     default:
       return 'Unknown status code';
+  }
+}
+
+/**
+ * Implements hook_url_outbound_alter().
+ */
+function raven_url_outbound_alter(&$path, &$options, $original_path) {
+  if (variable_get('raven_login_override', FALSE)) {
+    if ('user/login' === $path) {
+      $path = 'raven/login';
+    }
   }
 }
 
@@ -461,6 +472,19 @@ function raven_block_view_alter(&$data, $block) {
 }
 
 /**
+ * Implements hook_block_list_alter().
+ */
+function raven_block_list_alter(&$blocks) {
+  if(raven_backdoor_login_is_enabled() === TRUE && current_path() === 'user/backdoor/login') {
+    foreach($blocks as $key => $block) {
+      if($block->module === 'user' && $block->delta === 'login') {
+        unset($blocks[$key]);
+      }
+    }
+  }
+}
+
+/**
  * Is this a Raven user?
  *
  * @param StdClass $account
@@ -556,23 +580,20 @@ function user_raven_login_register($name) {
     drupal_alter('raven_login', $edit, $account);
   }
 
-  // Check if user is blocked
-  if (isset($account->name) && user_is_blocked($account->name)) {
+  $account = user_save($account, $edit);
+
+  if (FALSE === $account) {
+    drupal_set_message(t('Error saving user account.'), 'error');
+  }
+  elseif (FALSE === isset($status) && user_is_blocked($account->name)) {
     drupal_set_message(t('The username @name is blocked.', array('@name' => $account->name)), 'error');
   }
   else {
-    // Save the account
-    $account = user_save($account, $edit);
-    if ($account != FALSE) {
-      user_set_authmaps($account, array('authname_raven' => $name));
+    user_set_authmaps($account, array('authname_raven' => $name));
 
-      // Log user in
-      $form_state['uid'] = $account->uid;
-      user_login_submit(array(), $form_state);
-    }
-    else {
-      drupal_set_message(t('Error saving user account.'), 'error');
-    }
+    // Log user in
+    $form_state['uid'] = $account->uid;
+    user_login_submit(array(), $form_state);
   }
 
   global $user;

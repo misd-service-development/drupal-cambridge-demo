@@ -1,0 +1,207 @@
+<?php
+/**
+ * @file
+ * Tests for Imagecache External.
+ */
+
+/**
+ * Tests the functions for working with public/private file schemes.
+ */
+class ImagecacheExternalTestCase extends DrupalWebTestCase {
+
+  protected $external_image_uri;
+  protected $admin_user;
+  protected $web_user;
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Imagecache External Tests',
+      'description' => 'Test Imagecache External.',
+      'group' => 'Imagecache External',
+    );
+  }
+
+  function setUp() {
+    parent::setUp(array('imagecache_external', 'text'));
+
+    $this->admin_user = $this->drupalCreateUser(array('Fetch external images', 'access content', 'access administration pages', 'administer site configuration', 'administer content types', 'administer nodes', 'create article content', 'edit any article content', 'delete any article content', 'administer image styles'));
+    $this->drupalLogin($this->admin_user);
+
+    // // Login as a normal user.
+    // $user = $this->drupalCreateUser(array('access content', 'Fetch external images'));
+    // $this->drupalLogin($user);
+
+    // Set a default image url.
+    $this->external_image_uri = 'https://drupal.org/files/druplicon.large_.png';
+  }
+
+  /**
+   * Create a new text field to store test URL's.
+   *
+   * @param $name
+   *   The name of the new field (all lowercase), exclude the "field_" prefix.
+   * @param $type_name
+   *   The node type that this field will be added to.
+   * @param $field_settings
+   *   A list of field settings that will be added to the defaults.
+   * @param $instance_settings
+   *   A list of instance settings that will be added to the instance defaults.
+   * @param $widget_settings
+   *   A list of widget settings that will be added to the widget defaults.
+   */
+  function createTextField($name, $type_name, $field_settings = array(), $instance_settings = array(), $widget_settings = array()) {
+    $field = array(
+      'field_name' => $name,
+      'type' => 'text',
+      'settings' => array(),
+      'cardinality' => !empty($field_settings['cardinality']) ? $field_settings['cardinality'] : 1,
+    );
+    $field['settings'] = array_merge($field['settings'], $field_settings);
+    field_create_field($field);
+
+    $instance = array(
+      'field_name' => $field['field_name'],
+      'entity_type' => 'node',
+      'label' => $name,
+      'bundle' => $type_name,
+      'required' => !empty($instance_settings['required']),
+      'settings' => array(),
+      'widget' => array(
+        'type' => 'text_textfield',
+        'settings' => array(),
+      ),
+    );
+    $instance['settings'] = array_merge($instance['settings'], $instance_settings);
+    $instance['widget']['settings'] = array_merge($instance['widget']['settings'], $widget_settings);
+    return field_create_instance($instance);
+  }
+
+  /**
+   * Set a to a node.
+   *
+   * @param $image
+   *   A file object representing the image to upload.
+   * @param $field_name
+   *   Name of the image field the image should be attached to.
+   * @param $type
+   *   The type of node to create.
+   */
+  function addNodeImage($image_uri, $field_name, $type) {
+    $edit = array(
+      'title' => $this->randomName(),
+      $field_name . '[' . LANGUAGE_NONE . '][0][value]' => $image_uri,
+    );
+    $this->drupalPost('node/add/' . $type, $edit, t('Save'));
+
+    // Retrieve ID of the newly created node from the current URL.
+    $matches = array();
+    preg_match('/node\/([0-9]+)/', $this->getUrl(), $matches);
+    return isset($matches[1]) ? $matches[1] : FALSE;
+  }
+
+  /**
+   * Test caching an external image.
+   */
+  function testCachingExternalImage() {
+    // Create a text field that uses the new style for rendering the image.
+    $field_name = strtolower($this->randomName(10));
+    $this->createTextField($field_name, 'article');
+    $instance = field_info_instance('node', $field_name, 'article');
+    $instance['display']['default']['type'] = 'imagecache_external_image';
+    $instance['display']['default']['settings']['image_style'] = 'large';
+    field_update_instance($instance);
+
+    // Create a new node with an image attached.
+    $nid = $this->addNodeImage($this->external_image_uri, $field_name, 'article');
+    $node = node_load($nid);
+
+    // Test that image is displayed using newly created style.
+    $this->drupalGet('node/' . $nid);
+    $img_tag = theme_imagecache_external(array(
+      'style_name' => 'large',
+      'path' => $this->external_image_uri,
+    ));
+    $this->assertRaw($img_tag, t('Image was sucessfully cached.'));
+  }
+
+  /**
+   * Test caching an external image with style using the public:// scheme.
+   */
+  function testCachingExternalImageWithImageStylePublic() {
+    $this->_testCachingExternalImageWithImageStyle('public');
+  }
+
+  /**
+   * Test caching an external image with style using the private:// scheme.
+   */
+  function testCachingExternalImageWithImageStylePrivate() {
+    $this->_testCachingExternalImageWithImageStyle('private');
+  }
+
+  /**
+   * Test caching an external image with an image style.
+   */
+  function _testCachingExternalImageWithImageStyle($scheme) {
+    $style = image_style_save(array('name' => rand()));
+    variable_set('file_default_scheme', $scheme);
+    $local_image_uri = imagecache_external_generate_path($this->external_image_uri);
+    $local_image_url = image_style_url($style['name'], $local_image_uri);
+
+    // Check if we can access the generated image.
+    $this->drupalGet($local_image_url);
+    $this->assertResponse(200, t('Image can be reached on %url', array('%url' => $local_image_url)));
+
+    // // Check if the theme function works as expected.
+    // $img_tag = theme_imagecache_external(array(
+    //   'style_name' => $style['name'],
+    //   'path' => $this->external_image_uri,
+    //   'alt' => 'Drupal logo',
+    //   'width' => 20,
+    //   'height' => 20,
+    // ));
+    // $expected_tag = '<img typeof="foaf:Image" src="' . check_plain($local_image_url) . '" width="20" height="20" alt="Drupal logo" />';
+    // $this->assertEqual($img_tag, $expected_tag, t('Expected img tag %tag was found on the %scheme filesystem.', array(
+    //   '%tag' => $expected_tag,
+    //   '%scheme' => $scheme,
+    // )));
+  }
+
+  /**
+   * Test caching an external image using the whitelist.
+   */
+  function testCachingExternalImageUsingWhitelist() {
+    variable_set('imagecache_external_option', 'white');
+    variable_set('imagecache_external_hosts', 'drupal.org');
+    $this->testCachingExternalImage();
+  }
+
+  /**
+   * Test caching an external image using the blacklist.
+   */
+  function testCachingExternalImageUsingBlacklist() {
+    variable_set('imagecache_external_option', 'black');
+    variable_set('imagecache_external_hosts', 'drupal.org');
+    $this->testCachingExternalImage();
+  }
+
+  /**
+   * Test caching an external image using the managed file system.
+   */
+  function testCachingExternalImageUsingManagedFileSystem() {
+    variable_set('imagecache_external_management', 'managed');
+
+    if ($path = imagecache_external_generate_path($this->external_image_uri)) {
+      $query = db_select('file_managed', 'f')
+        ->fields('f', array('fid'))
+        ->condition('uri', $path)
+        ->execute()
+        ->fetchCol();
+      $fid = array_shift($query);
+
+      $this->assertTrue(!empty($fid), t('Image %original was cached in the managed filesystem with file ID %fid.', array(
+        '%fid' => $fid,
+        '%original' => $this->external_image_uri,
+      )));
+    }
+  }
+}

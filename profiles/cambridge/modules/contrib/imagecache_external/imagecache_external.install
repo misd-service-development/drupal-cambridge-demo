@@ -1,0 +1,30 @@
+<?php
+/**
+ * @file
+ *
+ * (Un)install and update functions.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function imagecache_external_uninstall() {
+  variable_del('imagecache_directory');
+  variable_del('imagecache_external_hosts');
+  variable_del('imagecache_external_option');
+  variable_del('imagecache_external_management');
+}
+
+/**
+ * Set the File Mode to 'managed' as the new default is 'unmanaged'.
+ */
+function imagecache_external_update_7100() {
+  variable_set('imagecache_external_management', 'managed');
+}
+
+/**
+ * Set the Imagecache Externals directory to 'imagecache/external'.
+ */
+function imagecache_external_update_7101() {
+  variable_set('imagecache_directory', 'imagecache/external');
+}

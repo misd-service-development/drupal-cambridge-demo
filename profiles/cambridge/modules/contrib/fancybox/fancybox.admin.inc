@@ -29,7 +29,7 @@
 
 function fancybox_admin_settings_form($form, &$form_state) {
   $library = libraries_info('fancybox');
-  $settings = variable_get('fancybox_settings');
+  $settings = _fancybox_array_replace_recursive(_fancybox_defaults(), variable_get('fancybox_settings'));
 
   if (!$library['installed']) {
     if ($library['error'] == 'not found' || $library['error'] == 'not detected') {
@@ -300,6 +300,13 @@ function fancybox_admin_settings_form($form, &$form_state) {
     '#title' => t('modal'),
     '#description' => t('If checked, will disable navigation and closing.'),
     '#default_value' => $settings['options']['modal'],
+  );
+
+  $form['options']['advanced']['loop'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('loop'),
+    '#description' => t('If checked, enables cyclic navigation. This means, if you click "next" after you reach the last element, first element will be displayed (and vice versa).'),
+    '#default_value' => $settings['options']['loop'],
   );
 
   $form['options']['advanced']['effects'] = array(

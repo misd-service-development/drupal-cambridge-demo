@@ -1,0 +1,14 @@
+<?php
+/*
+ * Implements hook_install().
+ *
+ * Ensure our hooks fire after those of Menu module
+ *
+ */
+function persistent_menu_items_install() {
+  db_update('system')
+    ->fields(array('weight' => 1))
+    ->condition('name', 'persistent_menu_items', '=')
+    ->execute();
+
+}

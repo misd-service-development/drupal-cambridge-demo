@@ -115,6 +115,7 @@ class FeatureContext extends RawMinkContext {
 
   /**
    * @Given /^I am logged in as the admin user$/
+   * @When /^I log in as the admin user$/
    */
   public function iAmLoggedInAsTheAdminUser() {
     $minkContext = $this->getMinkContext();
@@ -237,6 +238,12 @@ class FeatureContext extends RawMinkContext {
    */
   public function iLogInToRavenAs($username) {
     $minkContext = $this->getMinkContext();
+
+    $minkContext->visit('/');
+
+    if ($this->getSession()->getPage()->hasLink('Log out')) {
+      $minkContext->visit('/user/logout');
+    }
 
     $minkContext->visit('/raven/login');
     $minkContext->fillField('User-id', $username);

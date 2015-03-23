@@ -57,7 +57,7 @@ abstract class FeedsXPathParserBase extends FeedsParser {
     $this->rawXML = array_keys(array_filter($source_config['rawXML']));
     // Set link.
     $fetcher_config = $source->getConfigFor($source->importer->fetcher);
-    $parser_result->link = $fetcher_config['source'];
+    $parser_result->link = isset($fetcher_config['source']) ? $fetcher_config['source'] : '';
 
     $this->xpath = new FeedsXPathParserDOMXPath($this->doc);
     $config = array();
@@ -246,7 +246,7 @@ abstract class FeedsXPathParserBase extends FeedsParser {
     foreach ($mappings as $source => $target) {
       $form['xpath']['sources'][$source] = array(
         '#type' => 'textfield',
-        '#title' => check_plain($targets[$target]['name']),
+        '#title' => isset($targets[$target]['name']) ? check_plain($targets[$target]['name']) : check_plain($target),
         '#description' => t('The XPath query to run.'),
         '#default_value' => isset($source_config['sources'][$source]) ? $source_config['sources'][$source] : '',
         '#maxlength' => 1024,
@@ -498,7 +498,7 @@ abstract class FeedsXPathParserBase extends FeedsParser {
     if ($label) {
       $targets = $importer->processor->getMappingTargets();
       foreach ($mappings as $source => $target) {
-        $mappings[$source] = $targets[$target]['name'];
+        $mappings[$source] = isset($targets[$target]['name']) ? $targets[$target]['name'] : $target;
       }
     }
 
@@ -531,6 +531,7 @@ abstract class FeedsXPathParserBase extends FeedsParser {
    *   The previous value of use_errors.
    */
   protected function errorStart() {
+    libxml_clear_errors();
     return libxml_use_internal_errors(TRUE);
   }
 
@@ -566,6 +567,15 @@ abstract class FeedsXPathParserBase extends FeedsParser {
     }
     libxml_clear_errors();
     libxml_use_internal_errors($use);
+  }
+
+  /**
+   * Overrides parent::hasSourceConfig().
+   *
+   * Stop Feeds from building our form over and over again.
+   */
+  public function hasSourceConfig() {
+    return TRUE;
   }
 
 }

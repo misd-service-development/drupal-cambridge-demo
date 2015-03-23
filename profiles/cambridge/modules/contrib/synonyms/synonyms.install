@@ -1,0 +1,46 @@
+<?php
+
+/**
+ * @file
+ * Install, update, and uninstall functions for the Synonyms module.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function synonyms_uninstall() {
+  // We rely on a constant defined in the main module's file, so we include it.
+  drupal_load('module', 'synonyms');
+  field_delete_field(SYNONYMS_DEFAULT_FIELD_NAME);
+  // Cleaning all configure variables.
+  $results = db_select('variable', 'var')
+    ->fields('var', array('name'))
+    ->condition('var.name', db_like('synonyms_') . '%', 'LIKE')
+    ->execute();
+  foreach ($results as $var) {
+    variable_del($var->name);
+  }
+}
+
+/**
+ * Implements hook_update_N().
+ *
+ * Update to version 7.x-1.1 of Synonyms module.
+ */
+function synonyms_update_7101() {
+  $result = db_select('variable', 'var')
+      ->fields('var', array('name'))
+      ->condition('var.name', db_like('synonyms_settings_') . '%', 'LIKE')
+      ->execute();
+  foreach ($result as $var) {
+    $settings = variable_get($var->name);
+    // Term merging has been deprecated in favor of Term Merge module.
+    unset($settings['term_merge']);
+    // Enabled synonyms now stored as field names, since the field independency
+    // has been introduced. See issue http://drupal.org/node/1850748.
+    drupal_load('module', 'synonyms');
+    $settings['synonyms'] = $settings['synonyms'] ? array(SYNONYMS_DEFAULT_FIELD_NAME) : array();
+    variable_set($var->name, $settings);
+  }
+  return t('Updated settings of synonyms.');
+}

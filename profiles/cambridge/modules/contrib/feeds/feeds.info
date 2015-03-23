@@ -37,6 +37,7 @@ files[] = tests/feeds_mapper_field.test
 files[] = tests/feeds_mapper_file.test
 files[] = tests/feeds_mapper_path.test
 files[] = tests/feeds_mapper_profile.test
+files[] = tests/feeds_mapper_unique.test
 files[] = tests/feeds_mapper.test
 files[] = tests/feeds_mapper_config.test
 files[] = tests/feeds_fetcher_file.test

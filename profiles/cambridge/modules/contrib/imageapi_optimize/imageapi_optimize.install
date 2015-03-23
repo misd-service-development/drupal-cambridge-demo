@@ -4,10 +4,21 @@
  * Install, update and uninstall functions
  */
 
+/**
+ * Implements hook_uninstall().
+ */
 function imageapi_optimize_uninstall() {
+  db_delete('variable')
+    ->condition('name', db_like('imageapi_optimize_') . '%', "LIKE")
+    ->execute();
+  cache_clear_all('variables', 'cache_bootstrap');
+}
+
+/**
+ * Upgrade variables.
+ */
+function imageapi_optimize_update_7000() {
   $variable_names = array(
-    'imageapi_optimize_service',
-    'imageapi_optimize_toolkit',
     'imageapi_optimize_advpng',
     'imageapi_optimize_optipng',
     'imageapi_optimize_jpegtran',
@@ -15,6 +26,14 @@ function imageapi_optimize_uninstall() {
     'imageapi_optimize_pngcrush',
   );
   foreach ($variable_names as $variable_name) {
+    $value = variable_get($variable_name, '');
     variable_del($variable_name);
+    if (!empty($value)) {
+      variable_set($variable_name, array(
+        'status' => TRUE,
+        'path' => $value,
+      ));
+    }
   }
+  drupal_flush_all_caches();
 }

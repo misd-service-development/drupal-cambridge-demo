@@ -667,10 +667,10 @@ abstract class FeedsProcessor extends FeedsPlugin {
    *
    * @param FeedsSource $source
    *   The source information about this import.
-   * @param $result
+   * @param FeedsParserResult $result
    *   A FeedsParserResult object.
    *
-   * @return
+   * @return int
    *   The serial id of an entity if found, 0 otherwise.
    */
   protected function existingEntityId(FeedsSource $source, FeedsParserResult $result) {
@@ -680,23 +680,40 @@ abstract class FeedsProcessor extends FeedsPlugin {
       ->condition('entity_type', $this->entityType())
       ->condition('id', $source->id);
 
-    // Iterate through all unique targets and test whether they do already
-    // exist in the database.
+    $targets = &drupal_static('FeedsProcessor::existingEntityId', array());
+    if (!isset($targets[$this->id])) {
+      $targets[$this->id] = $this->getMappingTargets();
+    }
+
+    $entity_id = 0;
+
+    // Iterate through all unique targets and test whether they already exist in
+    // the database.
     foreach ($this->uniqueTargets($source, $result) as $target => $value) {
-      switch ($target) {
-        case 'url':
-          $entity_id = $query->condition('url', $value)->execute()->fetchField();
-          break;
-        case 'guid':
-          $entity_id = $query->condition('guid', $value)->execute()->fetchField();
-          break;
+      if ($target === 'guid' || $target === 'url') {
+        $entity_id = $query->condition($target, $value)->execute()->fetchField();
       }
-      if (isset($entity_id)) {
-        // Return with the content id found.
+
+      if (!$entity_id && !empty($targets[$this->id][$target]['unique_callbacks'])) {
+        if (!is_array($value)) {
+          $value = array($value);
+        }
+
+        foreach ($targets[$this->id][$target]['unique_callbacks'] as $callback) {
+          if (is_callable($callback) && $entity_id = call_user_func_array($callback, array($source, $this->entityType(), $this->bundle(), $target, $value))) {
+            // Stop at the first unique ID returned by a callback.
+            break;
+          }
+        }
+      }
+
+      // Return with the content id found.
+      if ($entity_id) {
         return $entity_id;
       }
     }
-    return 0;
+
+    return $entity_id;
   }
 
 

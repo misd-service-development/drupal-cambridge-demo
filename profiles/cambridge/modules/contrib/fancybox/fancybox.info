@@ -6,9 +6,9 @@ configure = admin/config/user-interface/fancybox
 dependencies[] = image
 dependencies[] = libraries
 
-; Information added by drupal.org packaging script on 2013-08-06
-version = "7.x-2.0-beta2"
+; Information added by Drupal.org packaging script on 2015-02-07
+version = "7.x-2.0-beta5"
 core = "7.x"
 project = "fancybox"
-datestamp = "1375812453"
+datestamp = "1423336983"
 
