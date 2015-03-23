@@ -6,7 +6,7 @@ This is a complete Drupal site that is designed to show how a University of Camb
 What it contains
 ----------------
 
-- Latest version of Drupal (currently [7.31](https://www.drupal.org/drupal-7.31-release-notes)).
+- Latest version of Drupal (currently [7.35](https://www.drupal.org/drupal-7.35-release-notes)).
 - Latest version of the University of Cambridge full install profile (currently [1.2](https://github.com/misd-service-development/drupal-cambridge-profile/releases/tag/7.x-1.2-full)).
 - Demo content/configuration.
 
